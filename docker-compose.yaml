@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+    postgres:
+        image: postgres:14
+        restart: always
+        ports:
+            - '5432:5432'    
+        volumes:
+            - ./db_data/music:/var/lib/postgresql/data
+        env_file:
+            - .env    
+        healthcheck:
+            test: [ "CMD", "pg_isready", "-q", "-d", "balance", "-U","postgres" ]
+            timeout: 45s
+            interval: 10s
+            retries: 10
+    migrate:
+        image: migrate/migrate
+        restart: on-failure
+        depends_on:
+          postgres:
+            condition: service_healthy   
+        volumes:
+            - ./migrations:/migrations/balance
+        command:
+          [ "-database",  "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSL_MODE}" , "-path", "/migrations/balance", "up" ]            
+
+        
