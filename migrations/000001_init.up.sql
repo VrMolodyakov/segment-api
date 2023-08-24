@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS segments (
 CREATE TABLE IF NOT EXISTS user_segments (
     user_segment_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users (user_id) ON DELETE CASCADE,
-    segment_id INT REFERENCES segments (segment_id)
+    segment_id INT REFERENCES segments (segment_id) ON DELETE CASCADE,
 );
 
 COMMIT;
