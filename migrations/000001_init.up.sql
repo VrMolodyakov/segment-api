@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_id BIGSERIAL PRIMARY KEY,
     first_name VARCHAR(20) NOT NULL,
     last_name VARCHAR(20) NOT NULL,
-    email VARCHAR(254) NOT NULL
+    email VARCHAR(254) NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS segments (
@@ -13,11 +13,12 @@ CREATE TABLE IF NOT EXISTS segments (
 );
 
 CREATE TABLE IF NOT EXISTS user_segments (
-    user_segment_id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users (user_id) ON DELETE CASCADE,
-    segment_id BIGINT REFERENCES segments (segment_id) ON DELETE CASCADE,
+    user_id BIGINT,
+    segment_id BIGINT,
     expired_at TIMESTAMPTZ NOT NULL,
-    INDEX (user_id, segment_id)
+    PRIMARY KEY (user_id, segment_id),
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
+    FOREIGN KEY (segment_id) REFERENCES segments (segment_id) ON DELETE CASCADE
 );
 
 CREATE TYPE operation_enum AS ENUM ('добавление', 'удаление');

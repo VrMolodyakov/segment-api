@@ -25,5 +25,12 @@ services:
             - ./migrations:/migrations/segment
         command:
           [ "-database",  "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSL_MODE}" , "-path", "/migrations/segment", "up" ]            
-
+    app:
+        build: 
+          context: .
+          dockerfile: Dockerfile
+        ports:
+          - 8080:8080  
+        env_file:
+            - .env
         

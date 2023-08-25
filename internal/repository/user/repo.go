@@ -1,13 +1,17 @@
-package repo
+package user
 
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/VrMolodyakov/segment-api/internal/domain/user/model"
 	"github.com/VrMolodyakov/segment-api/internal/domain/user/service"
 	psql "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -38,12 +42,19 @@ func (r *repo) Create(ctx context.Context, user model.User) (int64, error) {
 		Suffix("RETURNING user_id").
 		ToSql()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("couldn't create query : %w", err)
 	}
 	var id int64
 	err = r.client.QueryRow(ctx, sql, args...).Scan(&id)
 	if err != nil {
-		return 0, err
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				return 0, fmt.Errorf("couldn't create an account: %w", service.ErrUserAlreadyExist)
+			}
+		}
+
+		return 0, fmt.Errorf("couldn't create an account: %w", err)
 	}
 	return id, nil
 }
@@ -59,7 +70,7 @@ func (r *repo) Get(ctx context.Context, userID int64) (model.User, error) {
 		Where(sq.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
-		return model.User{}, err
+		return model.User{}, fmt.Errorf("couldn't create query : %w", err)
 	}
 	var user model.User
 	err = r.client.
@@ -67,9 +78,9 @@ func (r *repo) Get(ctx context.Context, userID int64) (model.User, error) {
 		Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return model.User{}, service.ErrUserNotFound
+			return model.User{}, fmt.Errorf("couldn't get an account: %w", service.ErrUserNotFound)
 		}
-		return model.User{}, err
+		return model.User{}, fmt.Errorf("couldn't get an account: %w", err)
 	}
 	return user, nil
 }

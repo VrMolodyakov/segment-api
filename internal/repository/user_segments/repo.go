@@ -33,7 +33,6 @@ func New(client psql.Client, clock clock.Clock) *repo {
 	}
 }
 
-// addSegments []segment.Segment
 func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, add []segment.Segment, deleteNames []string) error {
 	tx, err := r.client.Begin(ctx)
 	if err != nil {
@@ -49,7 +48,7 @@ func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, add []segme
 		}
 	}()
 
-	if err := r.fillInsertIDs(ctx, tx, add); err != nil {
+	if err = r.fillInsertIDs(ctx, tx, add); err != nil {
 		return err
 	}
 
@@ -58,29 +57,30 @@ func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, add []segme
 		return err
 	}
 
-	if err := r.delete(ctx, tx, userID, deleteIDs); err != nil {
+	if err = r.delete(ctx, tx, userID, deleteIDs); err != nil {
 		return err
 	}
 
-	if err := r.insert(ctx, tx, userID, add); err != nil {
+	if err = r.insert(ctx, tx, userID, add); err != nil {
 		return err
 	}
 
-	if err := r.registerEvents(ctx, tx, userID, add, deleteIDs, r.clock.Now()); err != nil {
+	if err = r.registerEvents(ctx, tx, userID, add, deleteIDs, r.clock.Now()); err != nil {
 		return err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (r *repo) GetUserSegments(ctx context.Context, userID int) ([]history.Histpry, error) {
+func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]history.History, error) {
 	sql, args, err := r.builder.
-		Select("history_id", "user_id", "segment_id", "operation", "operation_timestamp").
+		Select("history_id", "user_id", "segment_name", "operation", "operation_timestamp").
 		From(historyTable).
+		Join("segments USING (segment_id)").
 		Where(sq.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
@@ -93,10 +93,10 @@ func (r *repo) GetUserSegments(ctx context.Context, userID int) ([]history.Histp
 	}
 	defer rows.Close()
 
-	histories := make([]history.Histpry, 0)
+	histories := make([]history.History, 0)
 	for rows.Next() {
-		var history history.Histpry
-		if err := rows.Scan(&history); err != nil {
+		var history history.History
+		if err := rows.Scan(&history.ID, &history.UserID, &history.Segment, &history.Operation, &history.Time); err != nil {
 			return nil, err
 		}
 		histories = append(histories, history)

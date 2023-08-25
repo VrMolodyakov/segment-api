@@ -1,13 +1,15 @@
-package repo
+package user
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/VrMolodyakov/segment-api/internal/domain/user/model"
 	"github.com/VrMolodyakov/segment-api/internal/domain/user/service"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,18 +36,19 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	tests := []struct {
-		title       string
-		args        args
-		expected    int64
-		expectError bool
-		mockCall    func()
+		title         string
+		args          args
+		expected      int64
+		expectedError error
+		isError       bool
+		mockCall      func()
 	}{
 		{
 			title: "Should successfully insert a new user",
 			args: args{
 				user: newUser,
 			},
-			expectError: false,
+			isError: false,
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
 				mockPSQLClient.
@@ -60,14 +63,30 @@ func TestCreateUser(t *testing.T) {
 			args: args{
 				user: newUser,
 			},
-			expectError: true,
+			isError: true,
 			mockCall: func() {
 				mockPSQLClient.
 					ExpectQuery("INSERT INTO users").
 					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
 					WillReturnError(errors.New("internal database error"))
 			},
-			expected: 0,
+			expectedError: fmt.Errorf("couldn't create an account: %w", errors.New("internal database error")),
+			expected:      0,
+		},
+		{
+			title: "User already exist",
+			args: args{
+				user: newUser,
+			},
+			isError: true,
+			mockCall: func() {
+				mockPSQLClient.
+					ExpectQuery("INSERT INTO users").
+					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
+					WillReturnError(&pgconn.PgError{Code: "23505"})
+			},
+			expectedError: fmt.Errorf("couldn't create an account: %w", service.ErrUserAlreadyExist),
+			expected:      0,
 		},
 	}
 
@@ -76,8 +95,9 @@ func TestCreateUser(t *testing.T) {
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			got, err := repo.Create(ctx, test.args.user)
-			if test.expectError {
+			if test.isError {
 				assert.Error(t, err)
+				assert.Equal(t, err, test.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}
