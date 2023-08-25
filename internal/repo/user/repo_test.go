@@ -25,7 +25,7 @@ func TestCreateUser(t *testing.T) {
 		user model.User
 	}
 
-	userID := 1
+	userID := int64(1)
 
 	newUser := model.User{
 		FirstName: "Arnold",
@@ -36,7 +36,7 @@ func TestCreateUser(t *testing.T) {
 	tests := []struct {
 		title       string
 		args        args
-		expected    int
+		expected    int64
 		expectError bool
 		mockCall    func()
 	}{
@@ -97,7 +97,7 @@ func TestGetUser(t *testing.T) {
 	defer mockPSQLClient.Close()
 	repo := New(mockPSQLClient)
 
-	userID := 1
+	userID := int64(1)
 	user := model.User{
 		ID:        userID,
 		FirstName: "Arnold",
@@ -106,7 +106,7 @@ func TestGetUser(t *testing.T) {
 	}
 
 	type args struct {
-		userID int
+		userID int64
 	}
 
 	tests := []struct {

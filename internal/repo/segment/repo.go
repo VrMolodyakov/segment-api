@@ -27,7 +27,7 @@ func New(client psql.Client) *repo {
 	}
 }
 
-func (r *repo) Create(ctx context.Context, segment model.Segment) (int, error) {
+func (r *repo) Create(ctx context.Context, segment model.Segment) (int64, error) {
 	sql, args, err := r.builder.
 		Insert(segmentTable).
 		Columns(
@@ -38,7 +38,7 @@ func (r *repo) Create(ctx context.Context, segment model.Segment) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	var id int
+	var id int64
 	err = r.client.QueryRow(ctx, sql, args...).Scan(&id)
 	if err != nil {
 		return 0, err

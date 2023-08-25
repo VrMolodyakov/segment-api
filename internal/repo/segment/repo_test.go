@@ -24,7 +24,7 @@ func TestCreateSegment(t *testing.T) {
 		segment model.Segment
 	}
 
-	segmentID := 1
+	segmentID := int64(1)
 
 	newSegment := model.Segment{
 		Name: "discount",
@@ -34,7 +34,7 @@ func TestCreateSegment(t *testing.T) {
 		title         string
 		args          args
 		isError       bool
-		expected      int
+		expected      int64
 		expectedError error
 		mockCall      func()
 	}{
@@ -65,7 +65,7 @@ func TestCreateSegment(t *testing.T) {
 					WithArgs(newSegment.Name).
 					WillReturnError(errors.New("internal database error"))
 			},
-			expected:      0,
+			expected:      int64(0),
 			expectedError: errors.New("internal database error"),
 		},
 	}
@@ -169,8 +169,8 @@ func TestGetAllSegments(t *testing.T) {
 	repo := New(mockPSQLClient)
 
 	segments := []model.Segment{
-		{ID: 1, Name: "segment1"},
-		{ID: 2, Name: "segment2"},
+		{ID: int64(1), Name: "segment1"},
+		{ID: int64(2), Name: "segment2"},
 	}
 
 	tests := []struct {
@@ -231,7 +231,7 @@ func TestGetSegment(t *testing.T) {
 	repo := New(mockPSQLClient)
 
 	segmentName := "discount"
-	segmentID := 1
+	segmentID := int64(1)
 
 	expectedSegment := model.Segment{
 		ID:   segmentID,

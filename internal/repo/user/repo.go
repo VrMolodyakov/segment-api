@@ -27,7 +27,7 @@ func New(client psql.Client) *repo {
 	}
 }
 
-func (r *repo) Create(ctx context.Context, user model.User) (int, error) {
+func (r *repo) Create(ctx context.Context, user model.User) (int64, error) {
 	sql, args, err := r.builder.
 		Insert(userTable).
 		Columns(
@@ -40,7 +40,7 @@ func (r *repo) Create(ctx context.Context, user model.User) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	var id int
+	var id int64
 	err = r.client.QueryRow(ctx, sql, args...).Scan(&id)
 	if err != nil {
 		return 0, err
@@ -48,7 +48,7 @@ func (r *repo) Create(ctx context.Context, user model.User) (int, error) {
 	return id, nil
 }
 
-func (r *repo) Get(ctx context.Context, userID int) (model.User, error) {
+func (r *repo) Get(ctx context.Context, userID int64) (model.User, error) {
 	sql, args, err := r.builder.
 		Select(
 			"user_id",
