@@ -1,4 +1,4 @@
-package usersegments
+package participation
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	history "github.com/VrMolodyakov/segment-api/internal/domain/history/model"
+	participation "github.com/VrMolodyakov/segment-api/internal/domain/participation/model"
 	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
@@ -348,9 +349,10 @@ func TestGetUserSegments(t *testing.T) {
 	repo := New(mockClient, clock)
 
 	userID := int64(1)
-	historyRecords := []history.History{
-		{ID: int64(1), UserID: userID, Segment: "segment1", Operation: "Added", Time: testTime},
-		{ID: int64(2), UserID: userID, Segment: "segment1", Operation: "Deleted", Time: testTime},
+
+	participationRecords := []participation.Participation{
+		{UserID: userID, SegmentName: "segment1", ExpiredAt: testTime},
+		{UserID: userID, SegmentName: "segment1", ExpiredAt: testTime},
 	}
 
 	type args struct {
@@ -360,30 +362,30 @@ func TestGetUserSegments(t *testing.T) {
 	tests := []struct {
 		title    string
 		isError  bool
-		expected []history.History
+		expected []participation.Participation
 		args     args
 		mockCall func()
 	}{
 		{
-			title: "Should successfully retrieve user segments history",
+			title: "Should successfully retrieve user participation",
 			mockCall: func() {
-				rows := pgxmock.NewRows([]string{"history_id", "user_id", "segment_name", "operation", "operation_timestamp"}).
-					AddRow(historyRecords[0].ID, historyRecords[0].UserID, historyRecords[0].Segment, historyRecords[0].Operation, historyRecords[0].Time).
-					AddRow(historyRecords[1].ID, historyRecords[1].UserID, historyRecords[1].Segment, historyRecords[1].Operation, historyRecords[1].Time)
+				rows := pgxmock.NewRows([]string{"user_id", "segment_name", "expired_at"}).
+					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentName, participationRecords[0].ExpiredAt).
+					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentName, participationRecords[1].ExpiredAt)
 				mockClient.
-					ExpectQuery("SELECT history_id, user_id, segment_name, operation, operation_timestamp FROM segment_history JOIN segments").
+					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments JOIN segments").
 					WithArgs(userID, testTime).
 					WillReturnRows(rows)
 			},
 			args:     args{userID: userID},
 			isError:  false,
-			expected: historyRecords,
+			expected: participationRecords,
 		},
 		{
 			title: "Database internal error",
 			mockCall: func() {
 				mockClient.
-					ExpectQuery("SELECT history_id, user_id, segment_name, operation, operation_timestamp FROM segment_history JOIN segments").
+					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments JOIN segments").
 					WithArgs(userID, testTime).
 					WillReturnError(errors.New("internal database error"))
 			},

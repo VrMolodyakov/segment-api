@@ -10,7 +10,6 @@ import (
 	_ "github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
 	_ "github.com/VrMolodyakov/segment-api/internal/domain/user/model"
 	"github.com/VrMolodyakov/segment-api/internal/repository/history"
-	"github.com/VrMolodyakov/segment-api/internal/repository/segment"
 	_ "github.com/VrMolodyakov/segment-api/internal/repository/user"
 	"github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
 	_ "github.com/VrMolodyakov/segment-api/pkg/clock"
@@ -46,8 +45,6 @@ func main() {
 	// 	Email:     "d@mail.ru",
 	// })
 
-	segmentRepo := segment.New(client)
-	segmentRepo.Delete(ctx, "1-seg")
 	// segmentRepo.Create(ctx, "1-seg")
 	// segmentRepo.Create(ctx, "2-seg")
 	// segmentRepo.Create(ctx, "3-seg")

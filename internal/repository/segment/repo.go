@@ -28,12 +28,12 @@ func New(client psql.Client) *repo {
 	}
 }
 
-func (r *repo) Create(ctx context.Context, segment string) (int64, error) {
+func (r *repo) Create(ctx context.Context, name string) (int64, error) {
 	sql, args, err := r.builder.
 		Insert(segmentTable).
 		Columns(
 			"segment_name").
-		Values(segment).
+		Values(name).
 		Suffix("RETURNING segment_id").
 		ToSql()
 	if err != nil {

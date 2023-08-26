@@ -1,4 +1,4 @@
-package usersegments
+package participation
 
 import (
 	"context"
@@ -8,11 +8,15 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	history "github.com/VrMolodyakov/segment-api/internal/domain/history/model"
+	participation "github.com/VrMolodyakov/segment-api/internal/domain/participation/model"
+	participationService "github.com/VrMolodyakov/segment-api/internal/domain/participation/service"
 	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
 	segmentService "github.com/VrMolodyakov/segment-api/internal/domain/segment/service"
 	psql "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
 	"github.com/VrMolodyakov/segment-api/pkg/clock"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -115,10 +119,10 @@ func (r *repo) DeleteSegment(ctx context.Context, name string) error {
 	return nil
 }
 
-func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]history.History, error) {
+func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]participation.Participation, error) {
 	sql, args, err := r.builder.
-		Select("history_id", "user_id", "segment_name", "operation", "operation_timestamp").
-		From(historyTable).
+		Select("user_id", "segment_name", "expired_at").
+		From(userSegmentsTable).
 		Join("segments USING (segment_id)").
 		Where(sq.Eq{"user_id": userID}).
 		Where(sq.Gt{"expired_at": r.clock.Now()}).
@@ -133,21 +137,19 @@ func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]history.His
 	}
 	defer rows.Close()
 
-	histories := make([]history.History, 0)
+	participations := make([]participation.Participation, 0)
 	for rows.Next() {
-		var history history.History
+		var participation participation.Participation
 		if err := rows.Scan(
-			&history.ID,
-			&history.UserID,
-			&history.Segment,
-			&history.Operation,
-			&history.Time); err != nil {
+			&participation.UserID,
+			&participation.SegmentName,
+			&participation.ExpiredAt); err != nil {
 			return nil, fmt.Errorf("couldn't scan history : %w", err)
 		}
-		histories = append(histories, history)
+		participations = append(participations, participation)
 	}
 
-	return histories, nil
+	return participations, nil
 }
 
 func (r *repo) deleteSegment(ctx context.Context, tx pgx.Tx, segmentID int64) error {
@@ -391,6 +393,12 @@ func (r *repo) insert(ctx context.Context, tx pgx.Tx, userID int64, segments []s
 	}
 	rows, err := tx.Exec(ctx, sql, args...)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				return fmt.Errorf("insert account: %w", participationService.ErrSegmentAlreadyAssigned)
+			}
+		}
 		return fmt.Errorf("couldn't run insert query : %w", err)
 	}
 

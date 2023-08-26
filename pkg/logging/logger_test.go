@@ -124,7 +124,7 @@ func TestLogger(t *testing.T) {
 		t.Run(test.title, func(t *testing.T) {
 			logFile, err := os.CreateTemp("", "test-log.txt")
 			if err != nil {
-				t.Fatalf("Error creating temp file: %v", err)
+				t.Fatalf("error creating temp file: %w", err)
 			}
 
 			defer os.Remove(logFile.Name())
