@@ -33,7 +33,7 @@ func New(client psql.Client, clock clock.Clock) *repo {
 	}
 }
 
-func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, add []segment.Segment, deleteNames []string) error {
+func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, addSegments []segment.Segment, deleteSegments []string) error {
 	tx, err := r.client.Begin(ctx)
 	if err != nil {
 		return err
@@ -48,24 +48,16 @@ func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, add []segme
 		}
 	}()
 
-	if err = r.fillInsertIDs(ctx, tx, add); err != nil {
+	if err = r.insertIfExists(ctx, tx, userID, addSegments); err != nil {
 		return err
 	}
 
-	deleteIDs, err := r.getDeleteIDs(ctx, tx, deleteNames)
-	if err != nil {
+	var deleteIDs []int64
+	if deleteIDs, err = r.deleteIfExists(ctx, tx, userID, deleteSegments); err != nil {
 		return err
 	}
 
-	if err = r.delete(ctx, tx, userID, deleteIDs); err != nil {
-		return err
-	}
-
-	if err = r.insert(ctx, tx, userID, add); err != nil {
-		return err
-	}
-
-	if err = r.registerEvents(ctx, tx, userID, add, deleteIDs, r.clock.Now()); err != nil {
+	if err = r.registerEvents(ctx, tx, userID, addSegments, deleteIDs, r.clock.Now()); err != nil {
 		return err
 	}
 
@@ -103,6 +95,33 @@ func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]history.His
 	}
 
 	return histories, nil
+}
+
+func (r *repo) insertIfExists(ctx context.Context, tx pgx.Tx, userID int64, addSegments []segment.Segment) error {
+	if len(addSegments) > 0 {
+		if err := r.fillInsertIDs(ctx, tx, addSegments); err != nil {
+			return err
+		}
+
+		if err := r.insert(ctx, tx, userID, addSegments); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *repo) deleteIfExists(ctx context.Context, tx pgx.Tx, userID int64, deleteSegments []string) ([]int64, error) {
+	var deleteIDs []int64
+	var err error
+	if len(deleteSegments) > 0 {
+		if deleteIDs, err = r.getDeleteIDs(ctx, tx, deleteSegments); err != nil {
+			return nil, err
+		}
+		if err = r.delete(ctx, tx, userID, deleteIDs); err != nil {
+			return nil, err
+		}
+	}
+	return deleteIDs, nil
 }
 
 func (r *repo) getDeleteIDs(ctx context.Context, tx pgx.Tx, names []string) ([]int64, error) {

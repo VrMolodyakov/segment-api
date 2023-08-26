@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS user_segments (
     FOREIGN KEY (segment_id) REFERENCES segments (segment_id) ON DELETE CASCADE
 );
 
-CREATE TYPE operation_enum AS ENUM ('добавление', 'удаление');
+CREATE TYPE operation_enum AS ENUM ('added', 'deleted');
 
 CREATE TABLE IF NOT EXISTS segment_history (
     history_id BIGSERIAL PRIMARY KEY,

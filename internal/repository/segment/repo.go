@@ -27,12 +27,12 @@ func New(client psql.Client) *repo {
 	}
 }
 
-func (r *repo) Create(ctx context.Context, segment model.Segment) (int64, error) {
+func (r *repo) Create(ctx context.Context, segment string) (int64, error) {
 	sql, args, err := r.builder.
 		Insert(segmentTable).
 		Columns(
 			"segment_name").
-		Values(segment.Name).
+		Values(segment).
 		Suffix("RETURNING segment_id").
 		ToSql()
 	if err != nil {
@@ -46,7 +46,7 @@ func (r *repo) Create(ctx context.Context, segment model.Segment) (int64, error)
 	return id, nil
 }
 
-func (r *repo) Get(ctx context.Context, name string) (model.Segment, error) {
+func (r *repo) Get(ctx context.Context, name string) (model.SegmentInfo, error) {
 	sql, args, err := r.builder.
 		Select(
 			"segment_id",
@@ -55,17 +55,17 @@ func (r *repo) Get(ctx context.Context, name string) (model.Segment, error) {
 		Where(sq.Eq{"segment_name": name}).
 		ToSql()
 	if err != nil {
-		return model.Segment{}, err
+		return model.SegmentInfo{}, err
 	}
-	var segment model.Segment
+	var segment model.SegmentInfo
 	err = r.client.
 		QueryRow(ctx, sql, args...).
 		Scan(&segment.ID, &segment.Name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return model.Segment{}, service.ErrSegmentNotFound
+			return model.SegmentInfo{}, service.ErrSegmentNotFound
 		}
-		return model.Segment{}, err
+		return model.SegmentInfo{}, err
 	}
 	return segment, nil
 }
@@ -92,7 +92,7 @@ func (r *repo) Delete(ctx context.Context, name string) error {
 	return nil
 }
 
-func (r *repo) GetAll(ctx context.Context) ([]model.Segment, error) {
+func (r *repo) GetAll(ctx context.Context) ([]model.SegmentInfo, error) {
 	sql, args, err := r.builder.
 		Select(
 			"segment_id",
@@ -109,10 +109,10 @@ func (r *repo) GetAll(ctx context.Context) ([]model.Segment, error) {
 	}
 	defer rows.Close()
 
-	var segments []model.Segment
+	var segments []model.SegmentInfo
 
 	for rows.Next() {
-		var segment model.Segment
+		var segment model.SegmentInfo
 		if err := rows.Scan(&segment.ID, &segment.Name); err != nil {
 			return nil, err
 		}

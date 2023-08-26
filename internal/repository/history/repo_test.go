@@ -24,8 +24,8 @@ func TestGetUserSegments(t *testing.T) {
 	userID := int64(1)
 	year, month := 2013, 11
 	historyRecords := []history.History{
-		{ID: int64(1), UserID: userID, Segment: "segment1", Operation: "Added", Time: testTime},
-		{ID: int64(2), UserID: userID, Segment: "segment1", Operation: "Deleted", Time: testTime},
+		{UserID: userID, Segment: "segment1", Operation: "Added", Time: testTime},
+		{UserID: userID, Segment: "segment1", Operation: "Deleted", Time: testTime},
 	}
 
 	type args struct {
@@ -44,9 +44,9 @@ func TestGetUserSegments(t *testing.T) {
 		{
 			title: "Should successfully retrieve user segments history",
 			mockCall: func() {
-				rows := pgxmock.NewRows([]string{"history_id", "user_id", "segment_name", "operation", "operation_timestamp"}).
-					AddRow(historyRecords[0].ID, historyRecords[0].UserID, historyRecords[0].Segment, historyRecords[0].Operation, historyRecords[0].Time).
-					AddRow(historyRecords[1].ID, historyRecords[1].UserID, historyRecords[1].Segment, historyRecords[1].Operation, historyRecords[1].Time)
+				rows := pgxmock.NewRows([]string{"user_id", "segment_name", "operation", "operation_timestamp"}).
+					AddRow(historyRecords[0].UserID, historyRecords[0].Segment, historyRecords[0].Operation, historyRecords[0].Time).
+					AddRow(historyRecords[1].UserID, historyRecords[1].Segment, historyRecords[1].Operation, historyRecords[1].Time)
 				mockClient.
 					ExpectQuery("SELECT user_id, segment_name, operation, operation_timestamp FROM segment_history JOIN segments").
 					WithArgs(year, month).

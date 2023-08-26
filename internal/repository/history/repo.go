@@ -46,7 +46,7 @@ func (r *repo) Get(ctx context.Context, year int, month int) ([]history.History,
 	histories := make([]history.History, 0)
 	for rows.Next() {
 		var history history.History
-		if err := rows.Scan(&history.ID, &history.UserID, &history.Segment, &history.Operation, &history.Time); err != nil {
+		if err := rows.Scan(&history.UserID, &history.Segment, &history.Operation, &history.Time); err != nil {
 			return nil, err
 		}
 		histories = append(histories, history)

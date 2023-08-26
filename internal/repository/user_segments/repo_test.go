@@ -91,6 +91,10 @@ func TestUpdateUserSegments(t *testing.T) {
 					WithArgs(insertNames...).
 					WillReturnRows(insertRows)
 				mockClient.
+					ExpectExec("INSERT INTO user_segments").
+					WithArgs(insertRecors...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.
 					ExpectQuery("SELECT segment_id FROM segments WHERE segment_name IN ").
 					WithArgs(deleteNames...).
 					WillReturnRows(deleteRows)
@@ -98,10 +102,6 @@ func TestUpdateUserSegments(t *testing.T) {
 					ExpectExec("DELETE FROM user_segments WHERE ").
 					WithArgs(deleteRecors...).
 					WillReturnResult(pgxmock.NewResult("DELETE", 2))
-				mockClient.
-					ExpectExec("INSERT INTO user_segments").
-					WithArgs(insertRecors...).
-					WillReturnResult(pgxmock.NewResult("INSERT", 2))
 				mockClient.
 					ExpectExec("INSERT INTO segment_history").
 					WithArgs(historyRows...).
@@ -148,6 +148,7 @@ func TestUpdateUserSegments(t *testing.T) {
 			mockCall: func() {
 				insertNames := []interface{}{"segment1", "segment2"}
 				deleteNames := []interface{}{"segment3", "segment4"}
+				insertRecors := []interface{}{userID, insertID1, testTime, userID, insertID2, testTime}
 				insertRows := pgxmock.
 					NewRows([]string{"segment_id", "segment_name"}).
 					AddRow(insertID1, "segment1").
@@ -159,6 +160,10 @@ func TestUpdateUserSegments(t *testing.T) {
 					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE segment_name IN ").
 					WithArgs(insertNames...).
 					WillReturnRows(insertRows)
+				mockClient.
+					ExpectExec("INSERT INTO user_segments").
+					WithArgs(insertRecors...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
 				mockClient.
 					ExpectQuery("SELECT segment_id FROM segments WHERE segment_name IN ").
 					WithArgs(deleteNames...).
@@ -177,10 +182,11 @@ func TestUpdateUserSegments(t *testing.T) {
 			expectedErr: errors.New("couldn't find some id"),
 		},
 		{
-			title: "Couldn't delete the necessary columns and we get an error",
+			title: "Couldn't delete the necessary columns and got an error",
 			mockCall: func() {
 				insertNames := []interface{}{"segment1", "segment2"}
 				deleteNames := []interface{}{"segment3", "segment4"}
+				insertRecors := []interface{}{userID, insertID1, testTime, userID, insertID2, testTime}
 				deleteRecors := []interface{}{userID, deleteID1, deleteID2}
 				insertRows := pgxmock.
 					NewRows([]string{"segment_id", "segment_name"}).
@@ -197,6 +203,10 @@ func TestUpdateUserSegments(t *testing.T) {
 					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE segment_name IN ").
 					WithArgs(insertNames...).
 					WillReturnRows(insertRows)
+				mockClient.
+					ExpectExec("INSERT INTO user_segments").
+					WithArgs(insertRecors...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
 				mockClient.
 					ExpectQuery("SELECT segment_id FROM segments WHERE segment_name IN ").
 					WithArgs(deleteNames...).
@@ -220,35 +230,20 @@ func TestUpdateUserSegments(t *testing.T) {
 			expectedErr: errors.New("couldn't delete some id"),
 		},
 		{
-			title: "Couldn't insert the necessary columns and we get an error",
+			title: "Couldn't insert the necessary columns and got an error",
 			mockCall: func() {
 				insertNames := []interface{}{"segment1", "segment2"}
-				deleteNames := []interface{}{"segment3", "segment4"}
 				insertRecors := []interface{}{userID, insertID1, testTime, userID, insertID2, testTime}
-				deleteRecors := []interface{}{userID, deleteID1, deleteID2}
 				insertRows := pgxmock.
 					NewRows([]string{"segment_id", "segment_name"}).
 					AddRow(insertID1, "segment1").
 					AddRow(insertID2, "segment2")
-				deleteRows := pgxmock.
-					NewRows([]string{"segment_id"}).
-					AddRow(deleteID1).
-					AddRow(deleteID2)
-
 				mockClient.
 					ExpectBegin()
 				mockClient.
 					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE segment_name IN ").
 					WithArgs(insertNames...).
 					WillReturnRows(insertRows)
-				mockClient.
-					ExpectQuery("SELECT segment_id FROM segments WHERE segment_name IN ").
-					WithArgs(deleteNames...).
-					WillReturnRows(deleteRows)
-				mockClient.
-					ExpectExec("DELETE FROM user_segments WHERE ").
-					WithArgs(deleteRecors...).
-					WillReturnResult(pgxmock.NewResult("DELETE", 2))
 				mockClient.
 					ExpectExec("INSERT INTO user_segments").
 					WithArgs(insertRecors...).
@@ -268,7 +263,7 @@ func TestUpdateUserSegments(t *testing.T) {
 			expectedErr: errors.New("couldn't insert some id"),
 		},
 		{
-			title: "Couldn't insert the necessary columns in segments history and we get an error",
+			title: "Couldn't insert the necessary columns in segments history and got an error",
 			mockCall: func() {
 				insertNames := []interface{}{"segment1", "segment2"}
 				deleteNames := []interface{}{"segment3", "segment4"}
@@ -296,6 +291,10 @@ func TestUpdateUserSegments(t *testing.T) {
 					WithArgs(insertNames...).
 					WillReturnRows(insertRows)
 				mockClient.
+					ExpectExec("INSERT INTO user_segments").
+					WithArgs(insertRecors...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.
 					ExpectQuery("SELECT segment_id FROM segments WHERE segment_name IN ").
 					WithArgs(deleteNames...).
 					WillReturnRows(deleteRows)
@@ -303,10 +302,6 @@ func TestUpdateUserSegments(t *testing.T) {
 					ExpectExec("DELETE FROM user_segments WHERE ").
 					WithArgs(deleteRecors...).
 					WillReturnResult(pgxmock.NewResult("DELETE", 2))
-				mockClient.
-					ExpectExec("INSERT INTO user_segments").
-					WithArgs(insertRecors...).
-					WillReturnResult(pgxmock.NewResult("INSERT", 2))
 				mockClient.
 					ExpectExec("INSERT INTO segment_history").
 					WithArgs(historyRows...).

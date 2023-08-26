@@ -9,6 +9,6 @@ type Segment struct {
 }
 
 type SegmentInfo struct {
-	ID        int64
-	ExpiredAt time.Time
+	ID   int64
+	Name string
 }

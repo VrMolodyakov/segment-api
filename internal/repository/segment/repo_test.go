@@ -21,12 +21,12 @@ func TestCreateSegment(t *testing.T) {
 	repo := New(mockPSQLClient)
 
 	type args struct {
-		segment model.Segment
+		segment string
 	}
 
 	segmentID := int64(1)
 
-	newSegment := model.Segment{
+	newSegment := model.SegmentInfo{
 		Name: "discount",
 	}
 
@@ -41,7 +41,7 @@ func TestCreateSegment(t *testing.T) {
 		{
 			title: "Should successfully insert a new segment",
 			args: args{
-				segment: newSegment,
+				segment: newSegment.Name,
 			},
 			isError: false,
 			mockCall: func() {
@@ -56,7 +56,7 @@ func TestCreateSegment(t *testing.T) {
 		{
 			title: "Database internal error",
 			args: args{
-				segment: newSegment,
+				segment: newSegment.Name,
 			},
 			isError: true,
 			mockCall: func() {
@@ -168,7 +168,7 @@ func TestGetAllSegments(t *testing.T) {
 	defer mockPSQLClient.Close()
 	repo := New(mockPSQLClient)
 
-	segments := []model.Segment{
+	segments := []model.SegmentInfo{
 		{ID: int64(1), Name: "segment1"},
 		{ID: int64(2), Name: "segment2"},
 	}
@@ -176,7 +176,7 @@ func TestGetAllSegments(t *testing.T) {
 	tests := []struct {
 		title       string
 		isError     bool
-		expected    []model.Segment
+		expected    []model.SegmentInfo
 		expectedErr error
 		mockCall    func()
 	}{
@@ -233,7 +233,7 @@ func TestGetSegment(t *testing.T) {
 	segmentName := "discount"
 	segmentID := int64(1)
 
-	expectedSegment := model.Segment{
+	expectedSegment := model.SegmentInfo{
 		ID:   segmentID,
 		Name: segmentName,
 	}
@@ -242,7 +242,7 @@ func TestGetSegment(t *testing.T) {
 		title         string
 		name          string
 		isError       bool
-		expected      model.Segment
+		expected      model.SegmentInfo
 		expectedError error
 		mockCall      func()
 	}{
