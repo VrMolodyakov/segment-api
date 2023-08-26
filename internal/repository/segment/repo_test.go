@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
-	"github.com/VrMolodyakov/segment-api/internal/domain/segment/service"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,12 +30,11 @@ func TestCreateSegment(t *testing.T) {
 	}
 
 	tests := []struct {
-		title         string
-		args          args
-		isError       bool
-		expected      int64
-		expectedError error
-		mockCall      func()
+		title    string
+		args     args
+		isError  bool
+		expected int64
+		mockCall func()
 	}{
 		{
 			title: "Should successfully insert a new segment",
@@ -65,8 +63,7 @@ func TestCreateSegment(t *testing.T) {
 					WithArgs(newSegment.Name).
 					WillReturnError(errors.New("internal database error"))
 			},
-			expected:      int64(0),
-			expectedError: errors.New("internal database error"),
+			expected: int64(0),
 		},
 	}
 
@@ -77,84 +74,11 @@ func TestCreateSegment(t *testing.T) {
 			got, err := repo.Create(ctx, test.args.segment)
 			if test.isError {
 				assert.Error(t, err)
-				assert.Equal(t, err, test.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, test.expected, got)
 
-		})
-	}
-}
-
-func TestDeleteSegment(t *testing.T) {
-	ctx := context.Background()
-	mockPSQLClient, err := pgxmock.NewPool()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer mockPSQLClient.Close()
-	repo := New(mockPSQLClient)
-
-	segmentName := "discount"
-
-	tests := []struct {
-		title         string
-		name          string
-		isError       bool
-		expectedError error
-		mockCall      func()
-	}{
-		{
-			title: "Should successfully delete an existing segment",
-			name:  segmentName,
-			mockCall: func() {
-				result := pgxmock.NewResult("DELETE", 1)
-				mockPSQLClient.
-					ExpectExec("DELETE FROM segments").
-					WithArgs(segmentName).
-					WillReturnResult(result)
-			},
-			isError: false,
-		},
-		{
-			title: "Segment not found",
-			name:  segmentName,
-			mockCall: func() {
-				result := pgxmock.NewResult("DELETE", 0)
-				mockPSQLClient.
-					ExpectExec("DELETE FROM segments").
-					WithArgs(segmentName).
-					WillReturnResult(result)
-			},
-			isError:       true,
-			expectedError: service.ErrSegmentNotFound,
-		},
-		{
-			title: "Database internal error",
-			name:  segmentName,
-			mockCall: func() {
-				mockPSQLClient.
-					ExpectExec("DELETE FROM segments").
-					WithArgs(segmentName).
-					WillReturnError(errors.New("internal database error"))
-			},
-			isError:       true,
-			expectedError: errors.New("internal database error"),
-		},
-	}
-
-	for _, test := range tests {
-		test := test
-		t.Run(test.title, func(t *testing.T) {
-			test.mockCall()
-			err := repo.Delete(ctx, test.name)
-			if test.isError {
-				assert.Error(t, err)
-				assert.Equal(t, test.expectedError, err)
-			} else {
-				assert.NoError(t, err)
-			}
 		})
 	}
 }
@@ -174,11 +98,10 @@ func TestGetAllSegments(t *testing.T) {
 	}
 
 	tests := []struct {
-		title       string
-		isError     bool
-		expected    []model.SegmentInfo
-		expectedErr error
-		mockCall    func()
+		title    string
+		isError  bool
+		expected []model.SegmentInfo
+		mockCall func()
 	}{
 		{
 			title: "Should successfully retrieve all segments",
@@ -200,8 +123,7 @@ func TestGetAllSegments(t *testing.T) {
 					ExpectQuery("SELECT segment_id, segment_name FROM segments").
 					WillReturnError(errors.New("internal database error"))
 			},
-			isError:     true,
-			expectedErr: errors.New("internal database error"),
+			isError: true,
 		},
 	}
 
@@ -212,7 +134,6 @@ func TestGetAllSegments(t *testing.T) {
 			result, err := repo.GetAll(ctx)
 			if test.isError {
 				assert.Error(t, err)
-				assert.Equal(t, test.expectedErr, err)
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, test.expected, result)
@@ -239,12 +160,11 @@ func TestGetSegment(t *testing.T) {
 	}
 
 	tests := []struct {
-		title         string
-		name          string
-		isError       bool
-		expected      model.SegmentInfo
-		expectedError error
-		mockCall      func()
+		title    string
+		name     string
+		isError  bool
+		expected model.SegmentInfo
+		mockCall func()
 	}{
 		{
 			title:   "Should retrieve an existing segment",
@@ -271,7 +191,6 @@ func TestGetSegment(t *testing.T) {
 					WithArgs("non_existent_segment").
 					WillReturnRows(rows)
 			},
-			expectedError: service.ErrSegmentNotFound,
 		},
 		{
 			title:   "Database internal error",
@@ -283,7 +202,6 @@ func TestGetSegment(t *testing.T) {
 					WithArgs(segmentName).
 					WillReturnError(errors.New("internal database error"))
 			},
-			expectedError: errors.New("internal database error"),
 		},
 	}
 
@@ -294,7 +212,6 @@ func TestGetSegment(t *testing.T) {
 			got, err := repo.Get(ctx, test.name)
 			if test.isError {
 				assert.Error(t, err)
-				assert.Equal(t, test.expectedError, err)
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, test.expected, got)

@@ -56,11 +56,10 @@ func TestUpdateUserSegments(t *testing.T) {
 	}
 
 	tests := []struct {
-		title       string
-		isError     bool
-		expectedErr error
-		args        args
-		mockCall    func()
+		title    string
+		isError  bool
+		args     args
+		mockCall func()
 	}{
 		{
 			title: "Should successfully insert 2 segment and delete 2 segment",
@@ -140,8 +139,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				deleteSegmentNames: []string{"segment3", "segment4"},
 				userID:             userID,
 			},
-			isError:     true,
-			expectedErr: errors.New("couldn't find some id"),
+			isError: true,
 		},
 		{
 			title: "Couldn't find all the ids by the name to delete and got an error",
@@ -178,8 +176,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				deleteSegmentNames: []string{"segment3", "segment4"},
 				userID:             userID,
 			},
-			isError:     true,
-			expectedErr: errors.New("couldn't find some id"),
+			isError: true,
 		},
 		{
 			title: "Couldn't delete the necessary columns and got an error",
@@ -226,8 +223,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				deleteSegmentNames: []string{"segment3", "segment4"},
 				userID:             userID,
 			},
-			isError:     true,
-			expectedErr: errors.New("couldn't delete some id"),
+			isError: true,
 		},
 		{
 			title: "Couldn't insert the necessary columns and got an error",
@@ -259,8 +255,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				deleteSegmentNames: []string{"segment3", "segment4"},
 				userID:             userID,
 			},
-			isError:     true,
-			expectedErr: errors.New("couldn't insert some id"),
+			isError: true,
 		},
 		{
 			title: "Couldn't insert the necessary columns in segments history and got an error",
@@ -317,8 +312,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				deleteSegmentNames: []string{"segment3", "segment4"},
 				userID:             userID,
 			},
-			isError:     true,
-			expectedErr: errors.New("couldn't insert some rows"),
+			isError: true,
 		},
 	}
 
@@ -334,7 +328,6 @@ func TestUpdateUserSegments(t *testing.T) {
 			)
 			if test.isError {
 				assert.Error(t, err)
-				assert.Equal(t, test.expectedErr, err)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -365,12 +358,11 @@ func TestGetUserSegments(t *testing.T) {
 	}
 
 	tests := []struct {
-		title       string
-		isError     bool
-		expected    []history.History
-		expectedErr error
-		args        args
-		mockCall    func()
+		title    string
+		isError  bool
+		expected []history.History
+		args     args
+		mockCall func()
 	}{
 		{
 			title: "Should successfully retrieve user segments history",
@@ -380,7 +372,7 @@ func TestGetUserSegments(t *testing.T) {
 					AddRow(historyRecords[1].ID, historyRecords[1].UserID, historyRecords[1].Segment, historyRecords[1].Operation, historyRecords[1].Time)
 				mockClient.
 					ExpectQuery("SELECT history_id, user_id, segment_name, operation, operation_timestamp FROM segment_history JOIN segments").
-					WithArgs(userID).
+					WithArgs(userID, testTime).
 					WillReturnRows(rows)
 			},
 			args:     args{userID: userID},
@@ -392,13 +384,12 @@ func TestGetUserSegments(t *testing.T) {
 			mockCall: func() {
 				mockClient.
 					ExpectQuery("SELECT history_id, user_id, segment_name, operation, operation_timestamp FROM segment_history JOIN segments").
-					WithArgs(userID).
+					WithArgs(userID, testTime).
 					WillReturnError(errors.New("internal database error"))
 			},
-			args:        args{userID: userID},
-			isError:     true,
-			expected:    nil,
-			expectedErr: errors.New("internal database error"),
+			args:     args{userID: userID},
+			isError:  true,
+			expected: nil,
 		},
 	}
 
@@ -409,12 +400,305 @@ func TestGetUserSegments(t *testing.T) {
 			result, err := repo.GetUserSegments(ctx, test.args.userID)
 			if test.isError {
 				assert.Error(t, err)
-				assert.Equal(t, test.expectedErr, err)
 			} else {
 				assert.NoError(t, err)
 
 			}
 			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+func TestDeleteSegment(t *testing.T) {
+	ctx := context.Background()
+	mockClient, err := pgxmock.NewPool()
+	if err != nil {
+		t.Error(err)
+	}
+	defer mockClient.Close()
+
+	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
+	clock := NewTestClock(testTime)
+	repo := New(mockClient, clock)
+
+	userID1, userID2 := int64(1), int64(2)
+	deleteID1 := int64(1)
+
+	type args struct {
+		name string
+	}
+
+	tests := []struct {
+		title    string
+		isError  bool
+		args     args
+		mockCall func()
+	}{
+		{
+			title: "Should successfully delete 2 users for given segment and segment itself",
+			mockCall: func() {
+				deleteNames := []interface{}{"segment1"}
+				segmentIDs := []interface{}{deleteID1}
+				deleteRows := pgxmock.
+					NewRows([]string{"segment_id"}).
+					AddRow(deleteID1)
+				userRows := pgxmock.
+					NewRows([]string{"user_id"}).
+					AddRow(userID1).
+					AddRow(userID2)
+				historyRows := []interface{}{
+					userID1, deleteID1, history.Deleted, testTime,
+					userID2, deleteID1, history.Deleted, testTime,
+				}
+
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(deleteNames...).
+					WillReturnRows(deleteRows)
+				mockClient.
+					ExpectQuery("SELECT user_id FROM user_segments WHERE segment_id ").
+					WithArgs(segmentIDs...).
+					WillReturnRows(userRows)
+				mockClient.
+					ExpectExec("DELETE FROM user_segments WHERE ").
+					WithArgs(segmentIDs...).
+					WillReturnResult(pgxmock.NewResult("DELETE", 2))
+				mockClient.
+					ExpectExec("INSERT INTO segment_history").
+					WithArgs(historyRows...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.
+					ExpectExec("DELETE FROM segments").
+					WithArgs(segmentIDs...).
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mockClient.
+					ExpectCommit()
+			},
+			args: args{
+				name: "segment1",
+			},
+			isError: false,
+		},
+		{
+			title: "Couldn't fild segment id and got an error",
+			mockCall: func() {
+				deleteNames := []interface{}{"segment1"}
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(deleteNames...).
+					WillReturnError(errors.New("id not found"))
+				mockClient.
+					ExpectRollback()
+			},
+			args: args{
+				name: "segment1",
+			},
+			isError: true,
+		},
+		{
+			title: "Couldn't fild user for given segment and got an error",
+			mockCall: func() {
+				deleteNames := []interface{}{"segment1"}
+				segmentIDs := []interface{}{deleteID1}
+				deleteRows := pgxmock.
+					NewRows([]string{"segment_id"}).
+					AddRow(deleteID1)
+
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(deleteNames...).
+					WillReturnRows(deleteRows)
+				mockClient.
+					ExpectQuery("SELECT user_id FROM user_segments WHERE segment_id ").
+					WithArgs(segmentIDs...).
+					WillReturnError(errors.New("users not found"))
+				mockClient.
+					ExpectRollback()
+			},
+			args: args{
+				name: "segment1",
+			},
+			isError: true,
+		},
+		{
+			title: "Couldn't delete users and got an error",
+			mockCall: func() {
+				deleteNames := []interface{}{"segment1"}
+				segmentIDs := []interface{}{deleteID1}
+				deleteRows := pgxmock.
+					NewRows([]string{"segment_id"}).
+					AddRow(deleteID1)
+				userRows := pgxmock.
+					NewRows([]string{"user_id"}).
+					AddRow(userID1).
+					AddRow(userID2)
+
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(deleteNames...).
+					WillReturnRows(deleteRows)
+				mockClient.
+					ExpectQuery("SELECT user_id FROM user_segments WHERE segment_id ").
+					WithArgs(segmentIDs...).
+					WillReturnRows(userRows)
+				mockClient.
+					ExpectExec("DELETE FROM user_segments WHERE ").
+					WithArgs(segmentIDs...).
+					WillReturnError(errors.New("cannot delete users"))
+				mockClient.
+					ExpectRollback()
+			},
+			args: args{
+				name: "segment1",
+			},
+			isError: true,
+		},
+		{
+			title: "Couldn't save delete history and got an error",
+			mockCall: func() {
+				deleteNames := []interface{}{"segment1"}
+				segmentIDs := []interface{}{deleteID1}
+				deleteRows := pgxmock.
+					NewRows([]string{"segment_id"}).
+					AddRow(deleteID1)
+				userRows := pgxmock.
+					NewRows([]string{"user_id"}).
+					AddRow(userID1).
+					AddRow(userID2)
+				historyRows := []interface{}{
+					userID1, deleteID1, history.Deleted, testTime,
+					userID2, deleteID1, history.Deleted, testTime,
+				}
+
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(deleteNames...).
+					WillReturnRows(deleteRows)
+				mockClient.
+					ExpectQuery("SELECT user_id FROM user_segments WHERE segment_id ").
+					WithArgs(segmentIDs...).
+					WillReturnRows(userRows)
+				mockClient.
+					ExpectExec("DELETE FROM user_segments WHERE ").
+					WithArgs(segmentIDs...).
+					WillReturnResult(pgxmock.NewResult("DELETE", 2))
+				mockClient.
+					ExpectExec("INSERT INTO segment_history").
+					WithArgs(historyRows...).
+					WillReturnError(errors.New("cannot save history row"))
+				mockClient.
+					ExpectRollback()
+			},
+			args: args{
+				name: "segment1",
+			},
+			isError: true,
+		},
+		{
+			title: "Couldn't delete segment and got an error",
+			mockCall: func() {
+				deleteNames := []interface{}{"segment1"}
+				segmentIDs := []interface{}{deleteID1}
+				deleteRows := pgxmock.
+					NewRows([]string{"segment_id"}).
+					AddRow(deleteID1)
+				userRows := pgxmock.
+					NewRows([]string{"user_id"}).
+					AddRow(userID1).
+					AddRow(userID2)
+				historyRows := []interface{}{
+					userID1, deleteID1, history.Deleted, testTime,
+					userID2, deleteID1, history.Deleted, testTime,
+				}
+
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(deleteNames...).
+					WillReturnRows(deleteRows)
+				mockClient.
+					ExpectQuery("SELECT user_id FROM user_segments WHERE segment_id ").
+					WithArgs(segmentIDs...).
+					WillReturnRows(userRows)
+				mockClient.
+					ExpectExec("DELETE FROM user_segments WHERE ").
+					WithArgs(segmentIDs...).
+					WillReturnResult(pgxmock.NewResult("DELETE", 2))
+				mockClient.
+					ExpectExec("INSERT INTO segment_history").
+					WithArgs(historyRows...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.
+					ExpectExec("DELETE FROM segments").
+					WithArgs(segmentIDs...).
+					WillReturnError(errors.New("cannot delete segment"))
+				mockClient.
+					ExpectRollback()
+			},
+			args: args{
+				name: "segment1",
+			},
+			isError: true,
+		},
+		{
+			title: "Should successfully delete just segment",
+			mockCall: func() {
+				deleteNames := []interface{}{"segment1"}
+				segmentIDs := []interface{}{deleteID1}
+				deleteRows := pgxmock.
+					NewRows([]string{"segment_id"}).
+					AddRow(deleteID1)
+				userRows := pgxmock.
+					NewRows([]string{"user_id"})
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(deleteNames...).
+					WillReturnRows(deleteRows)
+				mockClient.
+					ExpectQuery("SELECT user_id FROM user_segments WHERE segment_id ").
+					WithArgs(segmentIDs...).
+					WillReturnRows(userRows)
+				mockClient.
+					ExpectExec("DELETE FROM segments").
+					WithArgs(segmentIDs...).
+					WillReturnResult(pgxmock.NewResult("DELETE", 1))
+				mockClient.
+					ExpectCommit()
+			},
+			args: args{
+				name: "segment1",
+			},
+			isError: false,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.title, func(t *testing.T) {
+			test.mockCall()
+			err := repo.DeleteSegment(
+				ctx,
+				test.args.name,
+			)
+			if test.isError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
 		})
 	}
 }

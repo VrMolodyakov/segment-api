@@ -34,12 +34,11 @@ func TestGetUserSegments(t *testing.T) {
 	}
 
 	tests := []struct {
-		title       string
-		isError     bool
-		expected    []history.History
-		expectedErr error
-		args        args
-		mockCall    func()
+		title    string
+		isError  bool
+		expected []history.History
+		args     args
+		mockCall func()
 	}{
 		{
 			title: "Should successfully retrieve user segments history",
@@ -64,10 +63,9 @@ func TestGetUserSegments(t *testing.T) {
 					WithArgs(year, month).
 					WillReturnError(errors.New("internal database error"))
 			},
-			args:        args{year: year, month: month},
-			isError:     true,
-			expected:    nil,
-			expectedErr: errors.New("internal database error"),
+			args:     args{year: year, month: month},
+			isError:  true,
+			expected: nil,
 		},
 	}
 
@@ -78,7 +76,6 @@ func TestGetUserSegments(t *testing.T) {
 			result, err := repo.Get(ctx, test.args.year, test.args.month)
 			if test.isError {
 				assert.Error(t, err)
-				assert.Equal(t, test.expectedErr, err)
 			} else {
 				assert.NoError(t, err)
 

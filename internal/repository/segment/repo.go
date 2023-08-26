@@ -3,6 +3,7 @@ package segment
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
@@ -36,12 +37,12 @@ func (r *repo) Create(ctx context.Context, segment string) (int64, error) {
 		Suffix("RETURNING segment_id").
 		ToSql()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("couldn't create query : %w", err)
 	}
 	var id int64
 	err = r.client.QueryRow(ctx, sql, args...).Scan(&id)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("couldn't run query : %w", err)
 	}
 	return id, nil
 }
@@ -55,7 +56,7 @@ func (r *repo) Get(ctx context.Context, name string) (model.SegmentInfo, error) 
 		Where(sq.Eq{"segment_name": name}).
 		ToSql()
 	if err != nil {
-		return model.SegmentInfo{}, err
+		return model.SegmentInfo{}, fmt.Errorf("couldn't create query : %w", err)
 	}
 	var segment model.SegmentInfo
 	err = r.client.
@@ -65,31 +66,9 @@ func (r *repo) Get(ctx context.Context, name string) (model.SegmentInfo, error) 
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.SegmentInfo{}, service.ErrSegmentNotFound
 		}
-		return model.SegmentInfo{}, err
+		return model.SegmentInfo{}, fmt.Errorf("couldn't run query : %w", err)
 	}
 	return segment, nil
-}
-
-func (r *repo) Delete(ctx context.Context, name string) error {
-	sql, args, err := r.builder.
-		Delete(segmentTable).
-		Where(sq.Eq{"segment_name": name}).
-		ToSql()
-	if err != nil {
-		return err
-	}
-
-	result, err := r.client.Exec(ctx, sql, args...)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected := result.RowsAffected()
-	if rowsAffected == 0 {
-		return service.ErrSegmentNotFound
-	}
-
-	return nil
 }
 
 func (r *repo) GetAll(ctx context.Context) ([]model.SegmentInfo, error) {
@@ -100,7 +79,7 @@ func (r *repo) GetAll(ctx context.Context) ([]model.SegmentInfo, error) {
 		From(segmentTable).
 		ToSql()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't create query : %w", err)
 	}
 
 	rows, err := r.client.Query(ctx, sql, args...)
@@ -114,13 +93,9 @@ func (r *repo) GetAll(ctx context.Context) ([]model.SegmentInfo, error) {
 	for rows.Next() {
 		var segment model.SegmentInfo
 		if err := rows.Scan(&segment.ID, &segment.Name); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("couldn't scan query : %w", err)
 		}
 		segments = append(segments, segment)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	return segments, nil

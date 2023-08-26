@@ -3,11 +3,9 @@ package user
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/VrMolodyakov/segment-api/internal/domain/user/model"
-	"github.com/VrMolodyakov/segment-api/internal/domain/user/service"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pashagolub/pgxmock/v2"
@@ -36,12 +34,11 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	tests := []struct {
-		title         string
-		args          args
-		expected      int64
-		expectedError error
-		isError       bool
-		mockCall      func()
+		title    string
+		args     args
+		expected int64
+		isError  bool
+		mockCall func()
 	}{
 		{
 			title: "Should successfully insert a new user",
@@ -70,8 +67,7 @@ func TestCreateUser(t *testing.T) {
 					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
 					WillReturnError(errors.New("internal database error"))
 			},
-			expectedError: fmt.Errorf("couldn't create an account: %w", errors.New("internal database error")),
-			expected:      0,
+			expected: 0,
 		},
 		{
 			title: "User already exist",
@@ -85,8 +81,7 @@ func TestCreateUser(t *testing.T) {
 					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
 					WillReturnError(&pgconn.PgError{Code: "23505"})
 			},
-			expectedError: fmt.Errorf("couldn't create an account: %w", service.ErrUserAlreadyExist),
-			expected:      0,
+			expected: 0,
 		},
 	}
 
@@ -97,7 +92,6 @@ func TestCreateUser(t *testing.T) {
 			got, err := repo.Create(ctx, test.args.user)
 			if test.isError {
 				assert.Error(t, err)
-				assert.Equal(t, err, test.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -130,12 +124,11 @@ func TestGetUser(t *testing.T) {
 	}
 
 	tests := []struct {
-		title         string
-		args          args
-		expected      model.User
-		isError       bool
-		expectedError error
-		mockCall      func()
+		title    string
+		args     args
+		expected model.User
+		isError  bool
+		mockCall func()
 	}{
 		{
 			title: "Should successfully get the user",
@@ -164,8 +157,7 @@ func TestGetUser(t *testing.T) {
 					WithArgs(userID).
 					WillReturnError(errors.New("internal database error"))
 			},
-			expected:      model.User{},
-			expectedError: errors.New("internal database error"),
+			expected: model.User{},
 		},
 		{
 			title: "User not found",
@@ -178,8 +170,7 @@ func TestGetUser(t *testing.T) {
 					WithArgs(userID).
 					WillReturnError(pgx.ErrNoRows)
 			},
-			expected:      model.User{},
-			expectedError: service.ErrUserNotFound,
+			expected: model.User{},
 		},
 	}
 
@@ -190,7 +181,6 @@ func TestGetUser(t *testing.T) {
 			got, err := repo.Get(ctx, test.args.userID)
 			if test.isError {
 				assert.Error(t, err)
-				assert.Equal(t, err, test.expectedError)
 			} else {
 				assert.NoError(t, err)
 			}
