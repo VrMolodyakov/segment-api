@@ -79,10 +79,10 @@ func TestUpdateUserSegments(t *testing.T) {
 					AddRow(deleteID1).
 					AddRow(deleteID2)
 				historyRows := []interface{}{
-					userID, insertID1, history.Added, testTime,
-					userID, insertID2, history.Added, testTime,
-					userID, deleteID1, history.Deleted, testTime,
-					userID, deleteID2, history.Deleted, testTime,
+					userID, "segment1", history.Added, testTime,
+					userID, "segment2", history.Added, testTime,
+					userID, "segment3", history.Deleted, testTime,
+					userID, "segment4", history.Deleted, testTime,
 				}
 
 				mockClient.
@@ -275,10 +275,10 @@ func TestUpdateUserSegments(t *testing.T) {
 					AddRow(deleteID1).
 					AddRow(deleteID2)
 				historyRows := []interface{}{
-					userID, insertID1, history.Added, testTime,
-					userID, insertID2, history.Added, testTime,
-					userID, deleteID1, history.Deleted, testTime,
-					userID, deleteID2, history.Deleted, testTime,
+					userID, "segment1", history.Added, testTime,
+					userID, "segment2", history.Added, testTime,
+					userID, "segment3", history.Deleted, testTime,
+					userID, "segment4", history.Deleted, testTime,
 				}
 
 				mockClient.
@@ -377,7 +377,7 @@ func TestGetUserSegments(t *testing.T) {
 					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentName, participationRecords[0].ExpiredAt).
 					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentName, participationRecords[1].ExpiredAt)
 				mockClient.
-					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments JOIN segments").
+					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments").
 					WithArgs(userID, testTime).
 					WillReturnRows(rows)
 			},
@@ -389,7 +389,7 @@ func TestGetUserSegments(t *testing.T) {
 			title: "Database internal error",
 			mockCall: func() {
 				mockClient.
-					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments JOIN segments").
+					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments").
 					WithArgs(userID, testTime).
 					WillReturnError(errors.New("internal database error"))
 			},
@@ -456,8 +456,8 @@ func TestDeleteSegment(t *testing.T) {
 					AddRow(userID1).
 					AddRow(userID2)
 				historyRows := []interface{}{
-					userID1, deleteID1, history.Deleted, testTime,
-					userID2, deleteID1, history.Deleted, testTime,
+					userID1, "segment1", history.Deleted, testTime,
+					userID2, "segment1", history.Deleted, testTime,
 				}
 
 				mockClient.
@@ -583,8 +583,8 @@ func TestDeleteSegment(t *testing.T) {
 					AddRow(userID1).
 					AddRow(userID2)
 				historyRows := []interface{}{
-					userID1, deleteID1, history.Deleted, testTime,
-					userID2, deleteID1, history.Deleted, testTime,
+					userID1, "segment1", history.Deleted, testTime,
+					userID2, "segment1", history.Deleted, testTime,
 				}
 
 				mockClient.
@@ -626,8 +626,8 @@ func TestDeleteSegment(t *testing.T) {
 					AddRow(userID1).
 					AddRow(userID2)
 				historyRows := []interface{}{
-					userID1, deleteID1, history.Deleted, testTime,
-					userID2, deleteID1, history.Deleted, testTime,
+					userID1, "segment1", history.Deleted, testTime,
+					userID2, "segment1", history.Deleted, testTime,
 				}
 
 				mockClient.
@@ -715,7 +715,7 @@ func TestDeleteSegment(t *testing.T) {
 	}
 }
 
-func TestInsertUser(t *testing.T) {
+func TestCreateUser(t *testing.T) {
 	ctx := context.Background()
 	mockClient, err := pgxmock.NewPool()
 	if err != nil {
@@ -746,13 +746,13 @@ func TestInsertUser(t *testing.T) {
 			title: "Should successfully create user and automatically add it to 2 segments",
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
-				segmentsRows := pgxmock.NewRows([]string{"segment_id"}).
-					AddRow(segmentID1).
-					AddRow(segmentID2)
+				segmentsRows := pgxmock.NewRows([]string{"segment_id", "segment_name"}).
+					AddRow(segmentID1, "segment1").
+					AddRow(segmentID2, "segment2")
 				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
 				historyRows := []interface{}{
-					userID, segmentID1, history.Added, testTime,
-					userID, segmentID2, history.Added, testTime,
+					userID, "segment1", history.Added, testTime,
+					userID, "segment2", history.Added, testTime,
 				}
 				mockClient.
 					ExpectBegin()
@@ -761,7 +761,7 @@ func TestInsertUser(t *testing.T) {
 					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
 					WillReturnRows(rows)
 				mockClient.
-					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
 					WithArgs(percentage).
 					WillReturnRows(segmentsRows)
 				mockClient.
@@ -794,7 +794,7 @@ func TestInsertUser(t *testing.T) {
 			isError:  true,
 		},
 		{
-			title: "Error while searching  segments to add to the user",
+			title: "Error while searching segments to add to the user",
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
 				mockClient.
@@ -804,7 +804,7 @@ func TestInsertUser(t *testing.T) {
 					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
 					WillReturnRows(rows)
 				mockClient.
-					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
 					WithArgs(percentage).
 					WillReturnError(errors.New("cannot find"))
 				mockClient.
@@ -817,9 +817,9 @@ func TestInsertUser(t *testing.T) {
 			title: "Couldn't insert user and its segments",
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
-				segmentsRows := pgxmock.NewRows([]string{"segment_id"}).
-					AddRow(segmentID1).
-					AddRow(segmentID2)
+				segmentsRows := pgxmock.NewRows([]string{"segment_id", "segment_name"}).
+					AddRow(segmentID1, "segment1").
+					AddRow(segmentID2, "segment2")
 				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
 				mockClient.
 					ExpectBegin()
@@ -828,7 +828,7 @@ func TestInsertUser(t *testing.T) {
 					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
 					WillReturnRows(rows)
 				mockClient.
-					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
 					WithArgs(percentage).
 					WillReturnRows(segmentsRows)
 				mockClient.
@@ -845,13 +845,13 @@ func TestInsertUser(t *testing.T) {
 			title: "Couldn't insert user and segments in history table",
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
-				segmentsRows := pgxmock.NewRows([]string{"segment_id"}).
-					AddRow(segmentID1).
-					AddRow(segmentID2)
+				segmentsRows := pgxmock.NewRows([]string{"segment_id", "segment_name"}).
+					AddRow(segmentID1, "segment1").
+					AddRow(segmentID2, "segment2")
 				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
 				historyRows := []interface{}{
-					userID, segmentID1, history.Added, testTime,
-					userID, segmentID2, history.Added, testTime,
+					userID, "segment1", history.Added, testTime,
+					userID, "segment2", history.Added, testTime,
 				}
 				mockClient.
 					ExpectBegin()
@@ -860,7 +860,7 @@ func TestInsertUser(t *testing.T) {
 					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
 					WillReturnRows(rows)
 				mockClient.
-					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
 					WithArgs(percentage).
 					WillReturnRows(segmentsRows)
 				mockClient.
@@ -881,7 +881,7 @@ func TestInsertUser(t *testing.T) {
 			title: "Should successfully create user without segments",
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
-				segmentsRows := pgxmock.NewRows([]string{"segment_id"})
+				segmentsRows := pgxmock.NewRows([]string{"segment_id", "segment_name"})
 				mockClient.
 					ExpectBegin()
 				mockClient.
@@ -889,7 +889,7 @@ func TestInsertUser(t *testing.T) {
 					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
 					WillReturnRows(rows)
 				mockClient.
-					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
 					WithArgs(percentage).
 					WillReturnRows(segmentsRows)
 				mockClient.
@@ -930,12 +930,10 @@ func TestDeleteExpired(t *testing.T) {
 
 	userID1 := int64(1)
 	userID2 := int64(1)
-	segmentID1 := int64(1)
-	segmentID2 := int64(1)
 
-	participationRecords := []membership.Membership{
-		{UserID: userID1, SegmentID: segmentID1, ExpiredAt: testTime},
-		{UserID: userID2, SegmentID: segmentID2, ExpiredAt: testTime},
+	participationRecords := []membership.MembershipInfo{
+		{UserID: userID1, SegmentName: "segment1", ExpiredAt: testTime},
+		{UserID: userID2, SegmentName: "segment2", ExpiredAt: testTime},
 	}
 
 	tests := []struct {
@@ -947,16 +945,16 @@ func TestDeleteExpired(t *testing.T) {
 		{
 			title: "Should successfully delete expired rows",
 			mockCall: func() {
-				rows := pgxmock.NewRows([]string{"user_id", "id", "expired_at"}).
-					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentID, participationRecords[0].ExpiredAt).
-					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentID, participationRecords[1].ExpiredAt)
+				rows := pgxmock.NewRows([]string{"user_id", "segment_name", "expired_at"}).
+					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentName, participationRecords[0].ExpiredAt).
+					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentName, participationRecords[1].ExpiredAt)
 				historyRows := []interface{}{
-					userID1, segmentID1, history.Deleted, testTime,
-					userID2, segmentID2, history.Deleted, testTime,
+					userID1, "segment1", history.Deleted, testTime,
+					userID2, "segment2", history.Deleted, testTime,
 				}
 				mockClient.ExpectBegin()
 				mockClient.
-					ExpectQuery("SELECT user_id, segment_id, expired_at FROM user_segments WHERE ").
+					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments JOIN ").
 					WithArgs(testTime).
 					WillReturnRows(rows)
 				mockClient.
@@ -972,7 +970,7 @@ func TestDeleteExpired(t *testing.T) {
 			mockCall: func() {
 				mockClient.ExpectBegin()
 				mockClient.
-					ExpectQuery("SELECT user_id, segment_id, expired_at FROM user_segments WHERE ").
+					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments JOIN ").
 					WithArgs(testTime).
 					WillReturnError(errors.New("error while searching"))
 				mockClient.ExpectRollback()
@@ -982,16 +980,16 @@ func TestDeleteExpired(t *testing.T) {
 		{
 			title: "Couldn't insert history rows",
 			mockCall: func() {
-				rows := pgxmock.NewRows([]string{"user_id", "id", "expired_at"}).
-					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentID, participationRecords[0].ExpiredAt).
-					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentID, participationRecords[1].ExpiredAt)
+				rows := pgxmock.NewRows([]string{"user_id", "segment_name", "expired_at"}).
+					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentName, participationRecords[0].ExpiredAt).
+					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentName, participationRecords[1].ExpiredAt)
 				historyRows := []interface{}{
-					userID1, segmentID1, history.Deleted, testTime,
-					userID2, segmentID2, history.Deleted, testTime,
+					userID1, "segment1", history.Deleted, testTime,
+					userID2, "segment2", history.Deleted, testTime,
 				}
 				mockClient.ExpectBegin()
 				mockClient.
-					ExpectQuery("SELECT user_id, segment_id, expired_at FROM user_segments WHERE ").
+					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments JOIN ").
 					WithArgs(testTime).
 					WillReturnRows(rows)
 				mockClient.
@@ -1008,7 +1006,7 @@ func TestDeleteExpired(t *testing.T) {
 				rows := pgxmock.NewRows([]string{"user_id", "id", "expired_at"})
 				mockClient.ExpectBegin()
 				mockClient.
-					ExpectQuery("SELECT user_id, segment_id, expired_at FROM user_segments WHERE ").
+					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments JOIN ").
 					WithArgs(testTime).
 					WillReturnRows(rows)
 				mockClient.ExpectCommit()

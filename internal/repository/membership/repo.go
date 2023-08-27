@@ -59,12 +59,11 @@ func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, addSegments
 		return err
 	}
 
-	var deleteIDs []int64
-	if deleteIDs, err = r.deleteIfExists(ctx, tx, userID, deleteSegments); err != nil {
+	if err = r.deleteIfExists(ctx, tx, userID, deleteSegments); err != nil {
 		return err
 	}
 
-	if err = r.registerUpdateUserEvent(ctx, tx, userID, addSegments, deleteIDs, r.clock.Now()); err != nil {
+	if err = r.registerUpdateUserEvent(ctx, tx, userID, addSegments, deleteSegments, r.clock.Now()); err != nil {
 		return err
 	}
 
@@ -95,16 +94,16 @@ func (r *repo) DeleteSegment(ctx context.Context, name string) error {
 		return err
 	}
 
-	users, err := r.getUserIds(ctx, tx, segmentID)
+	users, err := r.getUsersBySegmentId(ctx, tx, segmentID)
 	if err != nil {
 		return err
 	}
 	if len(users) > 0 {
-		if err = r.deleteUsersBySegmentID(ctx, tx, segmentID); err != nil {
+		if err = r.deleteBySegmentID(ctx, tx, segmentID); err != nil {
 			return err
 		}
 
-		if err = r.registerDeleteUsersEvent(ctx, tx, users, segmentID, r.clock.Now()); err != nil {
+		if err = r.registerDeleteUsersEvent(ctx, tx, users, name, r.clock.Now()); err != nil {
 			return err
 		}
 	}
@@ -124,7 +123,6 @@ func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]membership.
 	sql, args, err := r.builder.
 		Select("user_id", "segment_name", "expired_at").
 		From(userSegmentsTable).
-		Join("segments USING (segment_id)").
 		Where(sq.Eq{"user_id": userID}).
 		Where(sq.Gt{"expired_at": r.clock.Now()}).
 		ToSql()
@@ -228,10 +226,11 @@ func (r *repo) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
-func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]membership.Membership, error) {
+func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]membership.MembershipInfo, error) {
 	sql, args, err := r.builder.
-		Select("user_id", "segment_id", "expired_at").
+		Select("user_id", "segment_name", "expired_at").
 		From(userSegmentsTable).
+		Join("segments USING (segment_id)").
 		Where(sq.Lt{"expired_at": r.clock.Now()}).
 		ToSql()
 	if err != nil {
@@ -244,12 +243,12 @@ func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]membership.Memb
 	}
 	defer rows.Close()
 
-	memberships := make([]membership.Membership, 0)
+	memberships := make([]membership.MembershipInfo, 0)
 	for rows.Next() {
-		var m membership.Membership
+		var m membership.MembershipInfo
 		if err := rows.Scan(
 			&m.UserID,
-			&m.SegmentID,
+			&m.SegmentName,
 			&m.ExpiredAt); err != nil {
 			return nil, fmt.Errorf("couldn't scan membership data : %w", err)
 		}
@@ -259,10 +258,11 @@ func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]membership.Memb
 	return memberships, nil
 }
 
-func (r *repo) hitPercentage(ctx context.Context, tx pgx.Tx, percentage int) ([]int64, error) {
+func (r *repo) hitPercentage(ctx context.Context, tx pgx.Tx, percentage int) ([]segment.SegmentInfo, error) {
 	sql, args, err := r.builder.
 		Select(
-			"segment_id").
+			"segment_id",
+			"segment_name").
 		From(segmentTable).
 		Where(sq.Lt{"automatic_percentage": percentage}).
 		ToSql()
@@ -275,14 +275,14 @@ func (r *repo) hitPercentage(ctx context.Context, tx pgx.Tx, percentage int) ([]
 	}
 	defer rows.Close()
 
-	var segmentIDs []int64
+	var segmentIDs []segment.SegmentInfo
 
 	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
+		var s segment.SegmentInfo
+		if err := rows.Scan(&s.ID, &s.Name); err != nil {
 			return nil, fmt.Errorf("couldn't scan id : %w", err)
 		}
-		segmentIDs = append(segmentIDs, id)
+		segmentIDs = append(segmentIDs, s)
 	}
 
 	return segmentIDs, nil
@@ -351,21 +351,21 @@ func (r *repo) insertIfExists(ctx context.Context, tx pgx.Tx, userID int64, addS
 	return nil
 }
 
-func (r *repo) deleteIfExists(ctx context.Context, tx pgx.Tx, userID int64, deleteSegments []string) ([]int64, error) {
+func (r *repo) deleteIfExists(ctx context.Context, tx pgx.Tx, userID int64, deleteSegments []string) error {
 	var deleteIDs []int64
 	var err error
 	if len(deleteSegments) > 0 {
 		if deleteIDs, err = r.getDeleteIDs(ctx, tx, deleteSegments...); err != nil {
-			return nil, err
+			return err
 		}
-		if err = r.deleteByUserID(ctx, tx, userID, deleteIDs); err != nil {
-			return nil, err
+		if err = r.deleteUserSegments(ctx, tx, userID, deleteIDs); err != nil {
+			return err
 		}
 	}
-	return deleteIDs, nil
+	return nil
 }
 
-func (r *repo) getUserIds(ctx context.Context, tx pgx.Tx, segmentID int64) ([]int64, error) {
+func (r *repo) getUsersBySegmentId(ctx context.Context, tx pgx.Tx, segmentID int64) ([]int64, error) {
 	sql, args, err := r.builder.
 		Select("user_id").
 		From(userSegmentsTable).
@@ -474,11 +474,11 @@ func (r *repo) fillInsertIDs(ctx context.Context, tx pgx.Tx, segments []segment.
 	ids := make(map[string]int64)
 	for rows.Next() {
 		var id int64
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
+		var s string
+		if err := rows.Scan(&id, &s); err != nil {
 			return fmt.Errorf("scan segment id,name: %w", err)
 		}
-		ids[name] = id
+		ids[s] = id
 	}
 
 	if len(ids) != len(names) {
@@ -496,7 +496,7 @@ func (r *repo) fillInsertIDs(ctx context.Context, tx pgx.Tx, segments []segment.
 	return nil
 }
 
-func (r *repo) deleteByUserID(ctx context.Context, tx pgx.Tx, userID int64, segmentIDs []int64) error {
+func (r *repo) deleteUserSegments(ctx context.Context, tx pgx.Tx, userID int64, segmentIDs []int64) error {
 	sql, args, err := r.builder.
 		Delete(userSegmentsTable).
 		Where(sq.Eq{"user_id": userID}).
@@ -522,7 +522,7 @@ func (r *repo) deleteByUserID(ctx context.Context, tx pgx.Tx, userID int64, segm
 	return nil
 }
 
-func (r *repo) deleteUsersBySegmentID(ctx context.Context, tx pgx.Tx, segmentIDs int64) error {
+func (r *repo) deleteBySegmentID(ctx context.Context, tx pgx.Tx, segmentIDs int64) error {
 	sql, args, err := r.builder.
 		Delete(userSegmentsTable).
 		Where(sq.Eq{"segment_id": segmentIDs}).
@@ -581,10 +581,10 @@ func (r *repo) insertWithExpirity(ctx context.Context, tx pgx.Tx, userID int64, 
 	return nil
 }
 
-func (r *repo) insertDefault(ctx context.Context, tx pgx.Tx, userID int64, segments []int64) error {
+func (r *repo) insertDefault(ctx context.Context, tx pgx.Tx, userID int64, segments []segment.SegmentInfo) error {
 	insertState := r.builder.Insert(userSegmentsTable).Columns("user_id", "segment_id")
 	for i := range segments {
-		insertState = insertState.Values(userID, segments[i])
+		insertState = insertState.Values(userID, segments[i].ID)
 	}
 
 	sql, args, err := insertState.ToSql()
@@ -618,14 +618,14 @@ func (r *repo) registerUpdateUserEvent(
 	tx pgx.Tx,
 	userID int64,
 	inserted []segment.Segment,
-	deleted []int64,
+	deleted []string,
 	timestamp time.Time,
 ) error {
 
-	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_id", "operation", "operation_timestamp")
+	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_name", "operation", "operation_timestamp")
 
 	for i := range inserted {
-		insertState = insertState.Values(userID, inserted[i].ID, history.Added, timestamp)
+		insertState = insertState.Values(userID, inserted[i].Name, history.Added, timestamp)
 	}
 
 	for _, id := range deleted {
@@ -656,14 +656,14 @@ func (r *repo) registerDeleteUsersEvent(
 	ctx context.Context,
 	tx pgx.Tx,
 	users []int64,
-	segmentID int64,
+	segment string,
 	timestamp time.Time,
 ) error {
 
-	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_id", "operation", "operation_timestamp")
+	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_name", "operation", "operation_timestamp")
 
 	for i := range users {
-		insertState = insertState.Values(users[i], segmentID, history.Deleted, timestamp)
+		insertState = insertState.Values(users[i], segment, history.Deleted, timestamp)
 	}
 
 	sql, args, err := insertState.ToSql()
@@ -690,14 +690,14 @@ func (r *repo) registerInsertUserEvents(
 	ctx context.Context,
 	tx pgx.Tx,
 	user int64,
-	segments []int64,
+	segments []segment.SegmentInfo,
 	timestamp time.Time,
 ) error {
 
-	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_id", "operation", "operation_timestamp")
+	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_name", "operation", "operation_timestamp")
 
 	for i := range segments {
-		insertState = insertState.Values(user, segments[i], history.Added, timestamp)
+		insertState = insertState.Values(user, segments[i].Name, history.Added, timestamp)
 	}
 
 	sql, args, err := insertState.ToSql()
@@ -723,14 +723,14 @@ func (r *repo) registerInsertUserEvents(
 func (r *repo) registerCleanupUserEvents(
 	ctx context.Context,
 	tx pgx.Tx,
-	memberships []membership.Membership,
+	memberships []membership.MembershipInfo,
 	timestamp time.Time,
 ) error {
 
-	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_id", "operation", "operation_timestamp")
+	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_name", "operation", "operation_timestamp")
 
 	for i := range memberships {
-		insertState = insertState.Values(memberships[i].UserID, memberships[i].SegmentID, history.Deleted, timestamp)
+		insertState = insertState.Values(memberships[i].UserID, memberships[i].SegmentName, history.Deleted, timestamp)
 	}
 
 	sql, args, err := insertState.ToSql()

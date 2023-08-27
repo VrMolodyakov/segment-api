@@ -28,11 +28,12 @@ func (r *repo) Get(ctx context.Context, date history.Date) ([]history.History, e
 	sql, args, err := r.builder.
 		Select("user_id", "segment_name", "operation", "operation_timestamp").
 		From(historyTable).
-		Join("segments USING (segment_id)").
 		Where(sq.And{
 			sq.Eq{"DATE_PART('year', operation_timestamp)": date.Year},
 			sq.Eq{"DATE_PART('month', operation_timestamp)": date.Month},
 		}).
+		OrderBy("user_id").
+		OrderBy("operation_timestamp").
 		ToSql()
 	if err != nil {
 		return nil, err

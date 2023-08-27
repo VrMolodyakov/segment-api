@@ -46,7 +46,7 @@ func TestGetUserSegments(t *testing.T) {
 					AddRow(historyRecords[0].UserID, historyRecords[0].Segment, historyRecords[0].Operation, historyRecords[0].Time).
 					AddRow(historyRecords[1].UserID, historyRecords[1].Segment, historyRecords[1].Operation, historyRecords[1].Time)
 				mockClient.
-					ExpectQuery("SELECT user_id, segment_name, operation, operation_timestamp FROM segment_history JOIN segments").
+					ExpectQuery("SELECT user_id, segment_name, operation, operation_timestamp FROM segment_history").
 					WithArgs(year, month).
 					WillReturnRows(rows)
 			},
@@ -60,7 +60,7 @@ func TestGetUserSegments(t *testing.T) {
 			title: "Database internal error",
 			mockCall: func() {
 				mockClient.
-					ExpectQuery("SELECT user_id, segment_name, operation, operation_timestamp FROM segment_history JOIN segments").
+					ExpectQuery("SELECT user_id, segment_name, operation, operation_timestamp FROM segment_history").
 					WithArgs(year, month).
 					WillReturnError(errors.New("internal database error"))
 			},

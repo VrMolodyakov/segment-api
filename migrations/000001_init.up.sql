@@ -27,7 +27,7 @@ CREATE TYPE operation_enum AS ENUM ('added', 'deleted');
 CREATE TABLE IF NOT EXISTS segment_history (
     history_id BIGSERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users (user_id),
-    segment_id BIGINT REFERENCES segments (segment_id),
+    segment_name VARCHAR(255) NOT NULL,
     operation operation_enum NOT NULL,
     operation_timestamp TIMESTAMPTZ NOT NULL 
 );

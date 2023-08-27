@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+const (
+	AvitoLaunchYear int = 2007
+)
+
 type Operation string
 
 var (
