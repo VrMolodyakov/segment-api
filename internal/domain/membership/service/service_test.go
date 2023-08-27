@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	participation "github.com/VrMolodyakov/segment-api/internal/domain/participation/model"
-	"github.com/VrMolodyakov/segment-api/internal/domain/participation/service/mocks"
+	membership "github.com/VrMolodyakov/segment-api/internal/domain/membership/model"
+	"github.com/VrMolodyakov/segment-api/internal/domain/membership/service/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
 	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment/service"
 	"github.com/VrMolodyakov/segment-api/pkg/logging"
@@ -15,13 +15,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUpdateUserParticipation(t *testing.T) {
+func TestUpdateUserMembership(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockRepo := mocks.NewMockParticipationRepository(ctrl)
+	mockRepo := mocks.NewMockMembershipRepository(ctrl)
 	defer ctrl.Finish()
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
-	participationService := New(mockRepo, mockLogger)
+	mockCache := mocks.NewMockCache(ctrl)
+	participationService := New(mockRepo, mockCache, 1*time.Minute, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -76,7 +77,7 @@ func TestUpdateUserParticipation(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
-			err := participationService.UpdateUserParticipation(ctx, test.args.userID, test.args.add, test.args.delete)
+			err := participationService.UpdateUserMembership(ctx, test.args.userID, test.args.add, test.args.delete)
 			if test.isError {
 				assert.Error(t, err)
 				assert.Equal(t, test.expectErr, err)
@@ -87,13 +88,14 @@ func TestUpdateUserParticipation(t *testing.T) {
 	}
 }
 
-func TestDeleteParticipation(t *testing.T) {
+func TestDeleteMembership(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockRepo := mocks.NewMockParticipationRepository(ctrl)
+	mockRepo := mocks.NewMockMembershipRepository(ctrl)
 	defer ctrl.Finish()
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
-	participationService := New(mockRepo, mockLogger)
+	mockCache := mocks.NewMockCache(ctrl)
+	participationService := New(mockRepo, mockCache, 1*time.Minute, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -132,7 +134,7 @@ func TestDeleteParticipation(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
-			err := participationService.DeleteParticipation(ctx, test.args.name)
+			err := participationService.DeleteMembership(ctx, test.args.name)
 			if test.isError {
 				assert.Error(t, err)
 				assert.Equal(t, test.expectErr, err)
@@ -145,11 +147,12 @@ func TestDeleteParticipation(t *testing.T) {
 
 func TestGetUserSegments(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockRepo := mocks.NewMockParticipationRepository(ctrl)
+	mockRepo := mocks.NewMockMembershipRepository(ctrl)
 	defer ctrl.Finish()
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
-	participationService := New(mockRepo, mockLogger)
+	mockCache := mocks.NewMockCache(ctrl)
+	participationService := New(mockRepo, mockCache, 1*time.Minute, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -158,7 +161,7 @@ func TestGetUserSegments(t *testing.T) {
 		userID int64
 	}
 
-	parts := []participation.Participation{
+	info := []membership.MembershipInfo{
 		{UserID: 1, SegmentName: "seg-1", ExpiredAt: time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)},
 		{UserID: 2, SegmentName: "seg-2", ExpiredAt: time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)},
 	}
@@ -167,34 +170,48 @@ func TestGetUserSegments(t *testing.T) {
 		title    string
 		mockCall mockCall
 		args     args
-		expected []participation.Participation
+		expected []membership.MembershipInfo
 		isError  bool
 	}{
 		{
-			title: "Successful get user segment participation",
+			title: "Not found in cache and successfully retrieves from repo",
 			mockCall: func() {
-				mockRepo.EXPECT().GetUserSegments(gomock.Any(), gomock.Any()).Return(parts, nil)
+				mockCache.EXPECT().Get(gomock.Any()).Return(nil, false)
+				mockRepo.EXPECT().GetUserSegments(gomock.Any(), gomock.Any()).Return(info, nil)
+				mockCache.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any())
 			},
 			args: args{
 				userID: userID,
 			},
-			expected: parts,
+			expected: info,
 		},
 		{
-			title: "DB error",
+			title: "Found in the cache and return the resulting value",
 			mockCall: func() {
-				mockRepo.EXPECT().GetUserSegments(gomock.Any(), gomock.Any()).Return(nil, errors.New("db error"))
+				mockCache.EXPECT().Get(gomock.Any()).Return(info, true)
 			},
 			args: args{
 				userID: userID,
 			},
+			expected: info,
+		},
+		{
+			title: "Not found in cache and could not get from repository",
+			mockCall: func() {
+				mockCache.EXPECT().Get(gomock.Any()).Return(nil, false)
+				mockRepo.EXPECT().GetUserSegments(gomock.Any(), gomock.Any()).Return(nil, errors.New("couldn't get data"))
+			},
+			args: args{
+				userID: userID,
+			},
+			isError:  true,
 			expected: nil,
 		},
 	}
 	for _, test := range testCases {
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
-			got, err := participationService.GetParticipation(ctx, test.args.userID)
+			got, err := participationService.GetUserMembership(ctx, test.args.userID)
 			if test.isError {
 				assert.Error(t, err)
 			} else {

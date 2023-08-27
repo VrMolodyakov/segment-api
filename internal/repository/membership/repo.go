@@ -1,4 +1,4 @@
-package participation
+package membership
 
 import (
 	"context"
@@ -8,10 +8,12 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	history "github.com/VrMolodyakov/segment-api/internal/domain/history/model"
-	participation "github.com/VrMolodyakov/segment-api/internal/domain/participation/model"
-	participationService "github.com/VrMolodyakov/segment-api/internal/domain/participation/service"
+	member "github.com/VrMolodyakov/segment-api/internal/domain/membership/model"
+	memberService "github.com/VrMolodyakov/segment-api/internal/domain/membership/service"
 	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
 	segmentService "github.com/VrMolodyakov/segment-api/internal/domain/segment/service"
+	user "github.com/VrMolodyakov/segment-api/internal/domain/user/model"
+	"github.com/VrMolodyakov/segment-api/internal/domain/user/service"
 	psql "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
 	"github.com/VrMolodyakov/segment-api/pkg/clock"
 	"github.com/jackc/pgerrcode"
@@ -21,8 +23,10 @@ import (
 
 const (
 	segmentTable      string = "segments"
+	userTable         string = "users"
 	userSegmentsTable string = "user_segments"
 	historyTable      string = "segment_history"
+	maxExpireTime     string = "infinity"
 )
 
 type repo struct {
@@ -42,7 +46,7 @@ func New(client psql.Client, clock clock.Clock) *repo {
 func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, addSegments []segment.Segment, deleteSegments []string) error {
 	tx, err := r.client.Begin(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't begin transaction: %w", err)
 	}
 
 	defer func() {
@@ -63,12 +67,12 @@ func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, addSegments
 		return err
 	}
 
-	if err = r.registerUpdateEvents(ctx, tx, userID, addSegments, deleteIDs, r.clock.Now()); err != nil {
+	if err = r.registerUpdateUserEvent(ctx, tx, userID, addSegments, deleteIDs, r.clock.Now()); err != nil {
 		return err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		return err
+		return fmt.Errorf("couldn't commit transaction: %w", err)
 	}
 
 	return nil
@@ -77,7 +81,7 @@ func (r *repo) UpdateUserSegments(ctx context.Context, userID int64, addSegments
 func (r *repo) DeleteSegment(ctx context.Context, name string) error {
 	tx, err := r.client.Begin(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't begin transaction: %w", err)
 	}
 
 	defer func() {
@@ -103,7 +107,7 @@ func (r *repo) DeleteSegment(ctx context.Context, name string) error {
 			return err
 		}
 
-		if err = r.registerDeleteEvents(ctx, tx, users, segmentID, r.clock.Now()); err != nil {
+		if err = r.registerDeleteUsersEvent(ctx, tx, users, segmentID, r.clock.Now()); err != nil {
 			return err
 		}
 	}
@@ -113,13 +117,13 @@ func (r *repo) DeleteSegment(ctx context.Context, name string) error {
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		return err
+		return fmt.Errorf("couldn't commit transaction: %w", err)
 	}
 
 	return nil
 }
 
-func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]participation.Participation, error) {
+func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]member.MembershipInfo, error) {
 	sql, args, err := r.builder.
 		Select("user_id", "segment_name", "expired_at").
 		From(userSegmentsTable).
@@ -137,19 +141,182 @@ func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]participati
 	}
 	defer rows.Close()
 
-	participations := make([]participation.Participation, 0)
+	memberships := make([]member.MembershipInfo, 0)
 	for rows.Next() {
-		var participation participation.Participation
+		var membership member.MembershipInfo
 		if err := rows.Scan(
-			&participation.UserID,
-			&participation.SegmentName,
-			&participation.ExpiredAt); err != nil {
-			return nil, fmt.Errorf("couldn't scan history : %w", err)
+			&membership.UserID,
+			&membership.SegmentName,
+			&membership.ExpiredAt); err != nil {
+			return nil, fmt.Errorf("couldn't scan membership info : %w", err)
 		}
-		participations = append(participations, participation)
+		memberships = append(memberships, membership)
 	}
 
-	return participations, nil
+	return memberships, nil
+}
+
+func (r *repo) CreateUser(ctx context.Context, user user.User) (int64, error) {
+	tx, err := r.client.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				err = fmt.Errorf("failed to rollback transaction: %w, initial error: %s", rollbackErr, err.Error())
+			}
+
+		}
+	}()
+
+	userID, err := r.createUser(ctx, tx, user)
+	if err != nil {
+		return 0, err
+	}
+
+	percentage := int(userID % 100)
+	segments, err := r.hitPercentage(ctx, tx, percentage)
+	if err != nil {
+		return 0, err
+	}
+	if len(segments) > 0 {
+		if err = r.insertDefault(ctx, tx, userID, segments); err != nil {
+			return 0, err
+		}
+
+		if err = r.registerInsertUserEvents(ctx, tx, userID, segments, r.clock.Now()); err != nil {
+			return 0, err
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("couldn't commit transaction: %w", err)
+	}
+
+	return userID, nil
+}
+
+func (r *repo) DeleteExpired(ctx context.Context) error {
+	tx, err := r.client.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("couldn't begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				err = fmt.Errorf("failed to rollback transaction: %w, initial error: %s", rollbackErr, err.Error())
+			}
+
+		}
+	}()
+
+	expired, err := r.getExpiredRows(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	if len(expired) > 0 {
+		if err = r.registerCleanupUserEvents(ctx, tx, expired, r.clock.Now()); err != nil {
+			return err
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("couldn't commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]member.Membership, error) {
+	sql, args, err := r.builder.
+		Select("user_id", "segment_id", "expired_at").
+		From(userSegmentsTable).
+		Where(sq.Lt{"expired_at": r.clock.Now()}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create query : %w", err)
+	}
+
+	rows, err := r.client.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't run query : %w", err)
+	}
+	defer rows.Close()
+
+	memberships := make([]member.Membership, 0)
+	for rows.Next() {
+		var participation member.Membership
+		if err := rows.Scan(
+			&participation.UserID,
+			&participation.SegmentID,
+			&participation.ExpiredAt); err != nil {
+			return nil, fmt.Errorf("couldn't scan membership data : %w", err)
+		}
+		memberships = append(memberships, participation)
+	}
+
+	return memberships, nil
+}
+
+func (r *repo) hitPercentage(ctx context.Context, tx pgx.Tx, percentage int) ([]int64, error) {
+	sql, args, err := r.builder.
+		Select(
+			"segment_id").
+		From(segmentTable).
+		Where(sq.Lt{"automatic_percentage": percentage}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create query : %w", err)
+	}
+	rows, err := r.client.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var segmentIDs []int64
+
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("couldn't scan id : %w", err)
+		}
+		segmentIDs = append(segmentIDs, id)
+	}
+
+	return segmentIDs, nil
+}
+
+func (r *repo) createUser(ctx context.Context, tx pgx.Tx, user user.User) (int64, error) {
+	sql, args, err := r.builder.
+		Insert(userTable).
+		Columns(
+			"first_name",
+			"last_name",
+			"email").
+		Values(user.FirstName, user.LastName, user.Email).
+		Suffix("RETURNING user_id").
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("couldn't create query : %w", err)
+	}
+	var id int64
+	err = tx.QueryRow(ctx, sql, args...).Scan(&id)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				return 0, fmt.Errorf("couldn't create an account: %w", service.ErrUserAlreadyExist)
+			}
+		}
+
+		return 0, fmt.Errorf("couldn't create an account: %w", err)
+	}
+	return id, nil
 }
 
 func (r *repo) deleteSegment(ctx context.Context, tx pgx.Tx, segmentID int64) error {
@@ -180,7 +347,7 @@ func (r *repo) insertIfExists(ctx context.Context, tx pgx.Tx, userID int64, addS
 			return err
 		}
 
-		if err := r.insert(ctx, tx, userID, addSegments); err != nil {
+		if err := r.insertWithExpirity(ctx, tx, userID, addSegments); err != nil {
 			return err
 		}
 	}
@@ -381,10 +548,14 @@ func (r *repo) deleteUsersBySegmentID(ctx context.Context, tx pgx.Tx, segmentIDs
 	return nil
 }
 
-func (r *repo) insert(ctx context.Context, tx pgx.Tx, userID int64, segments []segment.Segment) error {
+func (r *repo) insertWithExpirity(ctx context.Context, tx pgx.Tx, userID int64, segments []segment.Segment) error {
 	insertState := r.builder.Insert(userSegmentsTable).Columns("user_id", "segment_id", "expired_at")
 	for i := range segments {
-		insertState = insertState.Values(userID, segments[i].ID, segments[i].ExpiredAt)
+		if segments[i].ExpiredAt.IsZero() {
+			insertState = insertState.Values(userID, segments[i].ID, maxExpireTime)
+		} else {
+			insertState = insertState.Values(userID, segments[i].ID, segments[i].ExpiredAt)
+		}
 	}
 
 	sql, args, err := insertState.ToSql()
@@ -396,7 +567,7 @@ func (r *repo) insert(ctx context.Context, tx pgx.Tx, userID int64, segments []s
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return fmt.Errorf("insert account: %w", participationService.ErrSegmentAlreadyAssigned)
+				return fmt.Errorf("insert account: %w", memberService.ErrSegmentAlreadyAssigned)
 			}
 		}
 		return fmt.Errorf("couldn't run insert query : %w", err)
@@ -413,7 +584,39 @@ func (r *repo) insert(ctx context.Context, tx pgx.Tx, userID int64, segments []s
 	return nil
 }
 
-func (r *repo) registerUpdateEvents(
+func (r *repo) insertDefault(ctx context.Context, tx pgx.Tx, userID int64, segments []int64) error {
+	insertState := r.builder.Insert(userSegmentsTable).Columns("user_id", "segment_id")
+	for i := range segments {
+		insertState = insertState.Values(userID, segments[i])
+	}
+
+	sql, args, err := insertState.ToSql()
+	if err != nil {
+		return fmt.Errorf("couldn't create query : %w", err)
+	}
+	rows, err := tx.Exec(ctx, sql, args...)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				return fmt.Errorf("insert account: %w", memberService.ErrSegmentAlreadyAssigned)
+			}
+		}
+		return fmt.Errorf("couldn't run insert query : %w", err)
+	}
+
+	if rows.RowsAffected() != int64(len(segments)) {
+		return fmt.Errorf(
+			"couldn't insert all the necessary rows, want %d , got %d",
+			len(segments),
+			rows.RowsAffected(),
+		)
+	}
+
+	return nil
+}
+
+func (r *repo) registerUpdateUserEvent(
 	ctx context.Context,
 	tx pgx.Tx,
 	userID int64,
@@ -452,7 +655,7 @@ func (r *repo) registerUpdateEvents(
 	return nil
 }
 
-func (r *repo) registerDeleteEvents(
+func (r *repo) registerDeleteUsersEvent(
 	ctx context.Context,
 	tx pgx.Tx,
 	users []int64,
@@ -475,6 +678,73 @@ func (r *repo) registerDeleteEvents(
 		return fmt.Errorf("couldn't run query : %w", err)
 	}
 	neededLen := int64(len(users))
+	if rows.RowsAffected() != neededLen {
+		return fmt.Errorf(
+			"couldn't insert all the necessary rows, want %d , got %d",
+			neededLen,
+			rows.RowsAffected(),
+		)
+	}
+
+	return nil
+}
+
+func (r *repo) registerInsertUserEvents(
+	ctx context.Context,
+	tx pgx.Tx,
+	user int64,
+	segments []int64,
+	timestamp time.Time,
+) error {
+
+	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_id", "operation", "operation_timestamp")
+
+	for i := range segments {
+		insertState = insertState.Values(user, segments[i], history.Added, timestamp)
+	}
+
+	sql, args, err := insertState.ToSql()
+	if err != nil {
+		return fmt.Errorf("couldn't create query : %w", err)
+	}
+	rows, err := tx.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("couldn't run query : %w", err)
+	}
+	neededLen := int64(len(segments))
+	if rows.RowsAffected() != neededLen {
+		return fmt.Errorf(
+			"couldn't insert all the necessary rows, want %d , got %d",
+			neededLen,
+			rows.RowsAffected(),
+		)
+	}
+
+	return nil
+}
+
+func (r *repo) registerCleanupUserEvents(
+	ctx context.Context,
+	tx pgx.Tx,
+	memberships []member.Membership,
+	timestamp time.Time,
+) error {
+
+	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_id", "operation", "operation_timestamp")
+
+	for i := range memberships {
+		insertState = insertState.Values(memberships[i].UserID, memberships[i].SegmentID, history.Deleted, timestamp)
+	}
+
+	sql, args, err := insertState.ToSql()
+	if err != nil {
+		return fmt.Errorf("couldn't create query : %w", err)
+	}
+	rows, err := tx.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("couldn't run query : %w", err)
+	}
+	neededLen := int64(len(memberships))
 	if rows.RowsAffected() != neededLen {
 		return fmt.Errorf(
 			"couldn't insert all the necessary rows, want %d , got %d",

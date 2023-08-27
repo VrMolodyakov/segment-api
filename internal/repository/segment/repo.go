@@ -28,11 +28,10 @@ func New(client psql.Client) *repo {
 	}
 }
 
-func (r *repo) Create(ctx context.Context, name string) (int64, error) {
+func (r *repo) Create(ctx context.Context, name string, percentage int) (int64, error) {
 	sql, args, err := r.builder.
 		Insert(segmentTable).
-		Columns(
-			"segment_name").
+		Columns("segment_name", "automatic_percentage").
 		Values(name).
 		Suffix("RETURNING segment_id").
 		ToSql()

@@ -1,4 +1,4 @@
-package participation
+package membership
 
 import (
 	"context"
@@ -7,8 +7,9 @@ import (
 	"time"
 
 	history "github.com/VrMolodyakov/segment-api/internal/domain/history/model"
-	participation "github.com/VrMolodyakov/segment-api/internal/domain/participation/model"
+	membership "github.com/VrMolodyakov/segment-api/internal/domain/membership/model"
 	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
+	user "github.com/VrMolodyakov/segment-api/internal/domain/user/model"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -332,6 +333,9 @@ func TestUpdateUserSegments(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+			if err := mockClient.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled expectations: %s", err)
+			}
 
 		})
 	}
@@ -350,7 +354,7 @@ func TestGetUserSegments(t *testing.T) {
 
 	userID := int64(1)
 
-	participationRecords := []participation.Participation{
+	participationRecords := []membership.MembershipInfo{
 		{UserID: userID, SegmentName: "segment1", ExpiredAt: testTime},
 		{UserID: userID, SegmentName: "segment1", ExpiredAt: testTime},
 	}
@@ -362,7 +366,7 @@ func TestGetUserSegments(t *testing.T) {
 	tests := []struct {
 		title    string
 		isError  bool
-		expected []participation.Participation
+		expected []membership.MembershipInfo
 		args     args
 		mockCall func()
 	}{
@@ -407,6 +411,9 @@ func TestGetUserSegments(t *testing.T) {
 
 			}
 			assert.Equal(t, test.expected, result)
+			if err := mockClient.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled expectations: %s", err)
+			}
 		})
 	}
 }
@@ -484,7 +491,7 @@ func TestDeleteSegment(t *testing.T) {
 			isError: false,
 		},
 		{
-			title: "Couldn't fild segment id and got an error",
+			title: "Error while searching for segment id",
 			mockCall: func() {
 				deleteNames := []interface{}{"segment1"}
 				mockClient.
@@ -502,7 +509,7 @@ func TestDeleteSegment(t *testing.T) {
 			isError: true,
 		},
 		{
-			title: "Couldn't fild user for given segment and got an error",
+			title: "Error while searching for user",
 			mockCall: func() {
 				deleteNames := []interface{}{"segment1"}
 				segmentIDs := []interface{}{deleteID1}
@@ -700,7 +707,330 @@ func TestDeleteSegment(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+			if err := mockClient.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled expectations: %s", err)
+			}
 
+		})
+	}
+}
+
+func TestInsertUser(t *testing.T) {
+	ctx := context.Background()
+	mockClient, err := pgxmock.NewPool()
+	if err != nil {
+		t.Error(err)
+	}
+	defer mockClient.Close()
+
+	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
+	clock := NewTestClock(testTime)
+	repo := New(mockClient, clock)
+
+	userID := int64(1)
+	percentage := 1
+	segmentID1, segmentID2 := int64(1), int64(2)
+	newUser := user.User{
+		FirstName: "Arnold",
+		LastName:  "Jones",
+		Email:     "t2000@mail.ru",
+	}
+
+	tests := []struct {
+		title    string
+		isError  bool
+		expected int64
+		mockCall func()
+	}{
+		{
+			title: "Should successfully create user and automatically add it to 2 segments",
+			mockCall: func() {
+				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
+				segmentsRows := pgxmock.NewRows([]string{"segment_id"}).
+					AddRow(segmentID1).
+					AddRow(segmentID2)
+				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
+				historyRows := []interface{}{
+					userID, segmentID1, history.Added, testTime,
+					userID, segmentID2, history.Added, testTime,
+				}
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("INSERT INTO users").
+					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
+					WillReturnRows(rows)
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(percentage).
+					WillReturnRows(segmentsRows)
+				mockClient.
+					ExpectExec("INSERT INTO user_segments").
+					WithArgs(insertRecors...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.
+					ExpectExec("INSERT INTO segment_history").
+					WithArgs(historyRows...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.
+					ExpectCommit()
+			},
+			expected: userID,
+			isError:  false,
+		},
+		{
+			title: "Error while inserting user",
+			mockCall: func() {
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("INSERT INTO users").
+					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
+					WillReturnError(errors.New("cannot insert new user"))
+				mockClient.
+					ExpectRollback()
+			},
+			expected: int64(0),
+			isError:  true,
+		},
+		{
+			title: "Error while searching  segments to add to the user",
+			mockCall: func() {
+				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("INSERT INTO users").
+					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
+					WillReturnRows(rows)
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(percentage).
+					WillReturnError(errors.New("cannot find"))
+				mockClient.
+					ExpectRollback()
+			},
+			expected: int64(0),
+			isError:  true,
+		},
+		{
+			title: "Couldn't insert user and its segments",
+			mockCall: func() {
+				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
+				segmentsRows := pgxmock.NewRows([]string{"segment_id"}).
+					AddRow(segmentID1).
+					AddRow(segmentID2)
+				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("INSERT INTO users").
+					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
+					WillReturnRows(rows)
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(percentage).
+					WillReturnRows(segmentsRows)
+				mockClient.
+					ExpectExec("INSERT INTO user_segments").
+					WithArgs(insertRecors...).
+					WillReturnError(errors.New("cannot insert"))
+				mockClient.
+					ExpectRollback()
+			},
+			expected: int64(0),
+			isError:  true,
+		},
+		{
+			title: "Couldn't insert user and segments in history table",
+			mockCall: func() {
+				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
+				segmentsRows := pgxmock.NewRows([]string{"segment_id"}).
+					AddRow(segmentID1).
+					AddRow(segmentID2)
+				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
+				historyRows := []interface{}{
+					userID, segmentID1, history.Added, testTime,
+					userID, segmentID2, history.Added, testTime,
+				}
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("INSERT INTO users").
+					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
+					WillReturnRows(rows)
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(percentage).
+					WillReturnRows(segmentsRows)
+				mockClient.
+					ExpectExec("INSERT INTO user_segments").
+					WithArgs(insertRecors...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.
+					ExpectExec("INSERT INTO segment_history").
+					WithArgs(historyRows...).
+					WillReturnError(errors.New("cannot insert event row"))
+				mockClient.
+					ExpectRollback()
+			},
+			expected: int64(0),
+			isError:  true,
+		},
+		{
+			title: "Should successfully create user without segments",
+			mockCall: func() {
+				rows := pgxmock.NewRows([]string{"user_id"}).AddRow(userID)
+				segmentsRows := pgxmock.NewRows([]string{"segment_id"})
+				mockClient.
+					ExpectBegin()
+				mockClient.
+					ExpectQuery("INSERT INTO users").
+					WithArgs(newUser.FirstName, newUser.LastName, newUser.Email).
+					WillReturnRows(rows)
+				mockClient.
+					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+					WithArgs(percentage).
+					WillReturnRows(segmentsRows)
+				mockClient.
+					ExpectCommit()
+			},
+			expected: userID,
+			isError:  false,
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.title, func(t *testing.T) {
+			test.mockCall()
+			got, err := repo.CreateUser(ctx, newUser)
+			if test.isError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, test.expected, got)
+			if err := mockClient.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled expectations: %s", err)
+			}
+		})
+	}
+}
+
+func TestDeleteExpired(t *testing.T) {
+	ctx := context.Background()
+	mockClient, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mockClient.Close()
+	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
+	clock := NewTestClock(testTime)
+	repo := New(mockClient, clock)
+
+	userID1 := int64(1)
+	userID2 := int64(1)
+	segmentID1 := int64(1)
+	segmentID2 := int64(1)
+
+	participationRecords := []membership.Membership{
+		{UserID: userID1, SegmentID: segmentID1, ExpiredAt: testTime},
+		{UserID: userID2, SegmentID: segmentID2, ExpiredAt: testTime},
+	}
+
+	tests := []struct {
+		title    string
+		isError  bool
+		expected []membership.MembershipInfo
+		mockCall func()
+	}{
+		{
+			title: "Should successfully delete expired rows",
+			mockCall: func() {
+				rows := pgxmock.NewRows([]string{"user_id", "id", "expired_at"}).
+					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentID, participationRecords[0].ExpiredAt).
+					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentID, participationRecords[1].ExpiredAt)
+				historyRows := []interface{}{
+					userID1, segmentID1, history.Deleted, testTime,
+					userID2, segmentID2, history.Deleted, testTime,
+				}
+				mockClient.ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT user_id, segment_id, expired_at FROM user_segments WHERE ").
+					WithArgs(testTime).
+					WillReturnRows(rows)
+				mockClient.
+					ExpectExec("INSERT INTO segment_history").
+					WithArgs(historyRows...).
+					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.ExpectCommit()
+			},
+			isError: false,
+		},
+		{
+			title: "Error while searching expired rows",
+			mockCall: func() {
+				mockClient.ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT user_id, segment_id, expired_at FROM user_segments WHERE ").
+					WithArgs(testTime).
+					WillReturnError(errors.New("error while searching"))
+				mockClient.ExpectRollback()
+			},
+			isError: true,
+		},
+		{
+			title: "Couldn't insert history rows",
+			mockCall: func() {
+				rows := pgxmock.NewRows([]string{"user_id", "id", "expired_at"}).
+					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentID, participationRecords[0].ExpiredAt).
+					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentID, participationRecords[1].ExpiredAt)
+				historyRows := []interface{}{
+					userID1, segmentID1, history.Deleted, testTime,
+					userID2, segmentID2, history.Deleted, testTime,
+				}
+				mockClient.ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT user_id, segment_id, expired_at FROM user_segments WHERE ").
+					WithArgs(testTime).
+					WillReturnRows(rows)
+				mockClient.
+					ExpectExec("INSERT INTO segment_history").
+					WithArgs(historyRows...).
+					WillReturnError(errors.New("error while inserting"))
+				mockClient.ExpectRollback()
+			},
+			isError: true,
+		},
+		{
+			title: "Expired rows not found",
+			mockCall: func() {
+				rows := pgxmock.NewRows([]string{"user_id", "id", "expired_at"})
+				mockClient.ExpectBegin()
+				mockClient.
+					ExpectQuery("SELECT user_id, segment_id, expired_at FROM user_segments WHERE ").
+					WithArgs(testTime).
+					WillReturnRows(rows)
+				mockClient.ExpectCommit()
+			},
+			isError: false,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.title, func(t *testing.T) {
+			test.mockCall()
+			err := repo.DeleteExpired(ctx)
+			if test.isError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+			}
+			if err := mockClient.ExpectationsWereMet(); err != nil {
+				t.Errorf("there were unfulfilled expectations: %s", err)
+			}
 		})
 	}
 }

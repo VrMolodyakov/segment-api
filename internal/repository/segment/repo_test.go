@@ -20,10 +20,12 @@ func TestCreateSegment(t *testing.T) {
 	repo := New(mockPSQLClient)
 
 	type args struct {
-		segment string
+		segment    string
+		percentage int
 	}
 
 	segmentID := int64(1)
+	percentage := 10
 
 	newSegment := model.SegmentInfo{
 		Name: "discount",
@@ -39,7 +41,8 @@ func TestCreateSegment(t *testing.T) {
 		{
 			title: "Should successfully insert a new segment",
 			args: args{
-				segment: newSegment.Name,
+				segment:    newSegment.Name,
+				percentage: percentage,
 			},
 			isError: false,
 			mockCall: func() {
@@ -71,7 +74,7 @@ func TestCreateSegment(t *testing.T) {
 		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
-			got, err := repo.Create(ctx, test.args.segment)
+			got, err := repo.Create(ctx, test.args.segment, test.args.percentage)
 			if test.isError {
 				assert.Error(t, err)
 			} else {
@@ -219,3 +222,71 @@ func TestGetSegment(t *testing.T) {
 		})
 	}
 }
+
+// func TestHitPercentage(t *testing.T) {
+// 	ctx := context.Background()
+// 	mockPSQLClient, err := pgxmock.NewPool()
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer mockPSQLClient.Close()
+// 	repo := New(mockPSQLClient)
+
+// 	segments := []int64{1, 2}
+// 	percentage := 10
+// 	type args struct {
+// 		percentage int
+// 	}
+// 	tests := []struct {
+// 		title    string
+// 		isError  bool
+// 		args     args
+// 		expected []int64
+// 		mockCall func()
+// 	}{
+// 		{
+// 			title: "Should successfully retrieve segments",
+// 			mockCall: func() {
+// 				rows := pgxmock.NewRows([]string{"segment_id"}).
+// 					AddRow(segments[0]).
+// 					AddRow(segments[1])
+// 				mockPSQLClient.
+// 					ExpectQuery("SELECT segment_id FROM segments WHERE ").
+// 					WithArgs(percentage).
+// 					WillReturnRows(rows)
+// 			},
+// 			args: args{
+// 				percentage: percentage,
+// 			},
+// 			isError:  false,
+// 			expected: segments,
+// 		},
+// 		{
+// 			title: "Database internal error",
+// 			mockCall: func() {
+// 				mockPSQLClient.
+// 					ExpectQuery("SELECT segment_id FROM segments WHERE").
+// 					WithArgs(percentage).
+// 					WillReturnError(errors.New("internal database error"))
+// 			},
+// 			args: args{
+// 				percentage: 10,
+// 			},
+// 			isError: true,
+// 		},
+// 	}
+
+// 	for _, test := range tests {
+// 		test := test
+// 		t.Run(test.title, func(t *testing.T) {
+// 			test.mockCall()
+// 			result, err := repo.HitPercentage(ctx, test.args.percentage)
+// 			if test.isError {
+// 				assert.Error(t, err)
+// 			} else {
+// 				assert.NoError(t, err)
+// 				assert.Equal(t, test.expected, result)
+// 			}
+// 		})
+// 	}
+// }
