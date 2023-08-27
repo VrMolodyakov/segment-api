@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	history "github.com/VrMolodyakov/segment-api/internal/domain/history/model"
-	membership "github.com/VrMolodyakov/segment-api/internal/domain/membership/model"
-	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
-	user "github.com/VrMolodyakov/segment-api/internal/domain/user/model"
+	"github.com/VrMolodyakov/segment-api/internal/domain/history"
+	"github.com/VrMolodyakov/segment-api/internal/domain/membership"
+	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
+	"github.com/VrMolodyakov/segment-api/internal/domain/user"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 )

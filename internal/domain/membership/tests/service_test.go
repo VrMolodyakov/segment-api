@@ -1,4 +1,4 @@
-package service
+package membership
 
 import (
 	"context"
@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
-	membership "github.com/VrMolodyakov/segment-api/internal/domain/membership/model"
-	"github.com/VrMolodyakov/segment-api/internal/domain/membership/service/mocks"
-	"github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
-	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment/service"
+	"github.com/VrMolodyakov/segment-api/internal/domain/membership"
+	"github.com/VrMolodyakov/segment-api/internal/domain/membership/mocks"
+	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
 	"github.com/VrMolodyakov/segment-api/pkg/logging"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -22,18 +21,18 @@ func TestUpdateUserMembership(t *testing.T) {
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
 	mockCache := mocks.NewMockCache(ctrl)
-	participationService := New(mockRepo, mockCache, 1*time.Minute, mockLogger)
+	participationService := membership.New(mockRepo, mockCache, 1*time.Minute, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
 	type args struct {
 		userID int64
-		add    []model.Segment
+		add    []segment.Segment
 		delete []string
 	}
 
 	userID := int64(1)
-	add := []model.Segment{
+	add := []segment.Segment{
 		{Name: "s-1"},
 		{Name: "s-2"},
 	}
@@ -63,7 +62,7 @@ func TestUpdateUserMembership(t *testing.T) {
 		{
 			title: "Segment already assigned and should return ErrSegmentAlreadyAssigned",
 			mockCall: func() {
-				mockRepo.EXPECT().UpdateUserSegments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(ErrSegmentAlreadyAssigned)
+				mockRepo.EXPECT().UpdateUserSegments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(membership.ErrSegmentAlreadyAssigned)
 			},
 			args: args{
 				add:    add,
@@ -71,7 +70,7 @@ func TestUpdateUserMembership(t *testing.T) {
 				userID: userID,
 			},
 			isError:   true,
-			expectErr: ErrSegmentAlreadyAssigned,
+			expectErr: membership.ErrSegmentAlreadyAssigned,
 		},
 	}
 	for _, test := range testCases {
@@ -95,7 +94,7 @@ func TestDeleteMembership(t *testing.T) {
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
 	mockCache := mocks.NewMockCache(ctrl)
-	participationService := New(mockRepo, mockCache, 1*time.Minute, mockLogger)
+	participationService := membership.New(mockRepo, mockCache, 1*time.Minute, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -152,7 +151,7 @@ func TestGetUserSegments(t *testing.T) {
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
 	mockCache := mocks.NewMockCache(ctrl)
-	participationService := New(mockRepo, mockCache, 1*time.Minute, mockLogger)
+	participationService := membership.New(mockRepo, mockCache, 1*time.Minute, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 

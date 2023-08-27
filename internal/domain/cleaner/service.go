@@ -1,4 +1,4 @@
-package service
+package cleaner
 
 import (
 	"context"

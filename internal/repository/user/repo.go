@@ -6,11 +6,8 @@ import (
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/VrMolodyakov/segment-api/internal/domain/user/model"
-	"github.com/VrMolodyakov/segment-api/internal/domain/user/service"
+	"github.com/VrMolodyakov/segment-api/internal/domain/user"
 	psql "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -31,35 +28,7 @@ func New(client psql.Client) *repo {
 	}
 }
 
-func (r *repo) Create(ctx context.Context, user model.User) (int64, error) {
-	sql, args, err := r.builder.
-		Insert(userTable).
-		Columns(
-			"first_name",
-			"last_name",
-			"email").
-		Values(user.FirstName, user.LastName, user.Email).
-		Suffix("RETURNING user_id").
-		ToSql()
-	if err != nil {
-		return 0, fmt.Errorf("couldn't create query : %w", err)
-	}
-	var id int64
-	err = r.client.QueryRow(ctx, sql, args...).Scan(&id)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-				return 0, fmt.Errorf("couldn't create an account: %w", service.ErrUserAlreadyExist)
-			}
-		}
-
-		return 0, fmt.Errorf("couldn't create an account: %w", err)
-	}
-	return id, nil
-}
-
-func (r *repo) Get(ctx context.Context, userID int64) (model.User, error) {
+func (r *repo) Get(ctx context.Context, userID int64) (user.User, error) {
 	sql, args, err := r.builder.
 		Select(
 			"user_id",
@@ -70,17 +39,17 @@ func (r *repo) Get(ctx context.Context, userID int64) (model.User, error) {
 		Where(sq.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
-		return model.User{}, fmt.Errorf("couldn't create query : %w", err)
+		return user.User{}, fmt.Errorf("couldn't create query : %w", err)
 	}
-	var user model.User
+	var u user.User
 	err = r.client.
 		QueryRow(ctx, sql, args...).
-		Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email)
+		Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return model.User{}, fmt.Errorf("couldn't get an account: %w", service.ErrUserNotFound)
+			return user.User{}, fmt.Errorf("couldn't get an account: %w", user.ErrUserNotFound)
 		}
-		return model.User{}, fmt.Errorf("couldn't get an account: %w", err)
+		return user.User{}, fmt.Errorf("couldn't get an account: %w", err)
 	}
-	return user, nil
+	return u, nil
 }

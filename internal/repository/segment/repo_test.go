@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
+	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,7 +27,7 @@ func TestCreateSegment(t *testing.T) {
 	segmentID := int64(1)
 	percentage := 10
 
-	newSegment := model.SegmentInfo{
+	newSegment := segment.SegmentInfo{
 		Name: "discount",
 	}
 
@@ -95,7 +95,7 @@ func TestGetAllSegments(t *testing.T) {
 	defer mockPSQLClient.Close()
 	repo := New(mockPSQLClient)
 
-	segments := []model.SegmentInfo{
+	segments := []segment.SegmentInfo{
 		{ID: int64(1), Name: "segment1"},
 		{ID: int64(2), Name: "segment2"},
 	}
@@ -103,7 +103,7 @@ func TestGetAllSegments(t *testing.T) {
 	tests := []struct {
 		title    string
 		isError  bool
-		expected []model.SegmentInfo
+		expected []segment.SegmentInfo
 		mockCall func()
 	}{
 		{
@@ -157,7 +157,7 @@ func TestGetSegment(t *testing.T) {
 	segmentName := "discount"
 	segmentID := int64(1)
 
-	expectedSegment := model.SegmentInfo{
+	expectedSegment := segment.SegmentInfo{
 		ID:   segmentID,
 		Name: segmentName,
 	}
@@ -166,7 +166,7 @@ func TestGetSegment(t *testing.T) {
 		title    string
 		name     string
 		isError  bool
-		expected model.SegmentInfo
+		expected segment.SegmentInfo
 		mockCall func()
 	}{
 		{
@@ -222,71 +222,3 @@ func TestGetSegment(t *testing.T) {
 		})
 	}
 }
-
-// func TestHitPercentage(t *testing.T) {
-// 	ctx := context.Background()
-// 	mockPSQLClient, err := pgxmock.NewPool()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer mockPSQLClient.Close()
-// 	repo := New(mockPSQLClient)
-
-// 	segments := []int64{1, 2}
-// 	percentage := 10
-// 	type args struct {
-// 		percentage int
-// 	}
-// 	tests := []struct {
-// 		title    string
-// 		isError  bool
-// 		args     args
-// 		expected []int64
-// 		mockCall func()
-// 	}{
-// 		{
-// 			title: "Should successfully retrieve segments",
-// 			mockCall: func() {
-// 				rows := pgxmock.NewRows([]string{"segment_id"}).
-// 					AddRow(segments[0]).
-// 					AddRow(segments[1])
-// 				mockPSQLClient.
-// 					ExpectQuery("SELECT segment_id FROM segments WHERE ").
-// 					WithArgs(percentage).
-// 					WillReturnRows(rows)
-// 			},
-// 			args: args{
-// 				percentage: percentage,
-// 			},
-// 			isError:  false,
-// 			expected: segments,
-// 		},
-// 		{
-// 			title: "Database internal error",
-// 			mockCall: func() {
-// 				mockPSQLClient.
-// 					ExpectQuery("SELECT segment_id FROM segments WHERE").
-// 					WithArgs(percentage).
-// 					WillReturnError(errors.New("internal database error"))
-// 			},
-// 			args: args{
-// 				percentage: 10,
-// 			},
-// 			isError: true,
-// 		},
-// 	}
-
-// 	for _, test := range tests {
-// 		test := test
-// 		t.Run(test.title, func(t *testing.T) {
-// 			test.mockCall()
-// 			result, err := repo.HitPercentage(ctx, test.args.percentage)
-// 			if test.isError {
-// 				assert.Error(t, err)
-// 			} else {
-// 				assert.NoError(t, err)
-// 				assert.Equal(t, test.expected, result)
-// 			}
-// 		})
-// 	}
-// }

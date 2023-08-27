@@ -1,10 +1,9 @@
-package service
+package segment
 
 import (
 	"context"
 	"errors"
 
-	"github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
 	"github.com/VrMolodyakov/segment-api/pkg/logging"
 )
 
@@ -13,8 +12,8 @@ var ErrSegmentAlreadyExists = errors.New("segment already exists")
 
 type SegmentRepository interface {
 	Create(ctx context.Context, name string) (int64, error)
-	Get(ctx context.Context, name string) (model.SegmentInfo, error)
-	GetAll(ctx context.Context) ([]model.SegmentInfo, error)
+	Get(ctx context.Context, name string) (SegmentInfo, error)
+	GetAll(ctx context.Context) ([]SegmentInfo, error)
 }
 
 type service struct {
@@ -42,6 +41,6 @@ func (s *service) CreateSegment(ctx context.Context, name string) (int64, error)
 	return s.segment.Create(ctx, name)
 }
 
-func (s *service) GetAllSegments(ctx context.Context) ([]model.SegmentInfo, error) {
+func (s *service) GetAllSegments(ctx context.Context) ([]SegmentInfo, error) {
 	return s.segment.GetAll(ctx)
 }

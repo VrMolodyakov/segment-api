@@ -6,8 +6,7 @@ import (
 	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
-	"github.com/VrMolodyakov/segment-api/internal/domain/segment/service"
+	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
 	psql "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
 	"github.com/jackc/pgx/v5"
 )
@@ -46,7 +45,7 @@ func (r *repo) Create(ctx context.Context, name string, percentage int) (int64, 
 	return id, nil
 }
 
-func (r *repo) Get(ctx context.Context, name string) (model.SegmentInfo, error) {
+func (r *repo) Get(ctx context.Context, name string) (segment.SegmentInfo, error) {
 	sql, args, err := r.builder.
 		Select(
 			"segment_id",
@@ -55,22 +54,22 @@ func (r *repo) Get(ctx context.Context, name string) (model.SegmentInfo, error) 
 		Where(sq.Eq{"segment_name": name}).
 		ToSql()
 	if err != nil {
-		return model.SegmentInfo{}, fmt.Errorf("couldn't create query : %w", err)
+		return segment.SegmentInfo{}, fmt.Errorf("couldn't create query : %w", err)
 	}
-	var segment model.SegmentInfo
+	var s segment.SegmentInfo
 	err = r.client.
 		QueryRow(ctx, sql, args...).
-		Scan(&segment.ID, &segment.Name)
+		Scan(&s.ID, &s.Name)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return model.SegmentInfo{}, service.ErrSegmentNotFound
+			return segment.SegmentInfo{}, segment.ErrSegmentNotFound
 		}
-		return model.SegmentInfo{}, fmt.Errorf("couldn't run query : %w", err)
+		return segment.SegmentInfo{}, fmt.Errorf("couldn't run query : %w", err)
 	}
-	return segment, nil
+	return s, nil
 }
 
-func (r *repo) GetAll(ctx context.Context) ([]model.SegmentInfo, error) {
+func (r *repo) GetAll(ctx context.Context) ([]segment.SegmentInfo, error) {
 	sql, args, err := r.builder.
 		Select(
 			"segment_id",
@@ -87,14 +86,14 @@ func (r *repo) GetAll(ctx context.Context) ([]model.SegmentInfo, error) {
 	}
 	defer rows.Close()
 
-	var segments []model.SegmentInfo
+	var segments []segment.SegmentInfo
 
 	for rows.Next() {
-		var segment model.SegmentInfo
-		if err := rows.Scan(&segment.ID, &segment.Name); err != nil {
+		var s segment.SegmentInfo
+		if err := rows.Scan(&s.ID, &s.Name); err != nil {
 			return nil, fmt.Errorf("couldn't scan query : %w", err)
 		}
-		segments = append(segments, segment)
+		segments = append(segments, s)
 	}
 
 	return segments, nil

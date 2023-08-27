@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	history "github.com/VrMolodyakov/segment-api/internal/domain/history/model"
+	"github.com/VrMolodyakov/segment-api/internal/domain/history"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,8 +29,7 @@ func TestGetUserSegments(t *testing.T) {
 	}
 
 	type args struct {
-		year  int
-		month int
+		date history.Date
 	}
 
 	tests := []struct {
@@ -51,7 +50,9 @@ func TestGetUserSegments(t *testing.T) {
 					WithArgs(year, month).
 					WillReturnRows(rows)
 			},
-			args:     args{year: year, month: month},
+			args: args{
+				history.Date{Year: year, Month: month},
+			},
 			isError:  false,
 			expected: historyRecords,
 		},
@@ -63,7 +64,9 @@ func TestGetUserSegments(t *testing.T) {
 					WithArgs(year, month).
 					WillReturnError(errors.New("internal database error"))
 			},
-			args:     args{year: year, month: month},
+			args: args{
+				history.Date{Year: year, Month: month},
+			},
 			isError:  true,
 			expected: nil,
 		},
@@ -73,7 +76,7 @@ func TestGetUserSegments(t *testing.T) {
 		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
-			result, err := repo.Get(ctx, test.args.year, test.args.month)
+			result, err := repo.Get(ctx, test.args.date)
 			if test.isError {
 				assert.Error(t, err)
 			} else {

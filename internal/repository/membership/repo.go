@@ -7,13 +7,10 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	history "github.com/VrMolodyakov/segment-api/internal/domain/history/model"
-	member "github.com/VrMolodyakov/segment-api/internal/domain/membership/model"
-	memberService "github.com/VrMolodyakov/segment-api/internal/domain/membership/service"
-	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
-	segmentService "github.com/VrMolodyakov/segment-api/internal/domain/segment/service"
-	user "github.com/VrMolodyakov/segment-api/internal/domain/user/model"
-	"github.com/VrMolodyakov/segment-api/internal/domain/user/service"
+	"github.com/VrMolodyakov/segment-api/internal/domain/history"
+	"github.com/VrMolodyakov/segment-api/internal/domain/membership"
+	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
+	"github.com/VrMolodyakov/segment-api/internal/domain/user"
 	psql "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
 	"github.com/VrMolodyakov/segment-api/pkg/clock"
 	"github.com/jackc/pgerrcode"
@@ -123,7 +120,7 @@ func (r *repo) DeleteSegment(ctx context.Context, name string) error {
 	return nil
 }
 
-func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]member.MembershipInfo, error) {
+func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]membership.MembershipInfo, error) {
 	sql, args, err := r.builder.
 		Select("user_id", "segment_name", "expired_at").
 		From(userSegmentsTable).
@@ -141,16 +138,16 @@ func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]member.Memb
 	}
 	defer rows.Close()
 
-	memberships := make([]member.MembershipInfo, 0)
+	memberships := make([]membership.MembershipInfo, 0)
 	for rows.Next() {
-		var membership member.MembershipInfo
+		var m membership.MembershipInfo
 		if err := rows.Scan(
-			&membership.UserID,
-			&membership.SegmentName,
-			&membership.ExpiredAt); err != nil {
+			&m.UserID,
+			&m.SegmentName,
+			&m.ExpiredAt); err != nil {
 			return nil, fmt.Errorf("couldn't scan membership info : %w", err)
 		}
-		memberships = append(memberships, membership)
+		memberships = append(memberships, m)
 	}
 
 	return memberships, nil
@@ -231,7 +228,7 @@ func (r *repo) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
-func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]member.Membership, error) {
+func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]membership.Membership, error) {
 	sql, args, err := r.builder.
 		Select("user_id", "segment_id", "expired_at").
 		From(userSegmentsTable).
@@ -247,16 +244,16 @@ func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]member.Membersh
 	}
 	defer rows.Close()
 
-	memberships := make([]member.Membership, 0)
+	memberships := make([]membership.Membership, 0)
 	for rows.Next() {
-		var participation member.Membership
+		var m membership.Membership
 		if err := rows.Scan(
-			&participation.UserID,
-			&participation.SegmentID,
-			&participation.ExpiredAt); err != nil {
+			&m.UserID,
+			&m.SegmentID,
+			&m.ExpiredAt); err != nil {
 			return nil, fmt.Errorf("couldn't scan membership data : %w", err)
 		}
-		memberships = append(memberships, participation)
+		memberships = append(memberships, m)
 	}
 
 	return memberships, nil
@@ -291,14 +288,14 @@ func (r *repo) hitPercentage(ctx context.Context, tx pgx.Tx, percentage int) ([]
 	return segmentIDs, nil
 }
 
-func (r *repo) createUser(ctx context.Context, tx pgx.Tx, user user.User) (int64, error) {
+func (r *repo) createUser(ctx context.Context, tx pgx.Tx, newUser user.User) (int64, error) {
 	sql, args, err := r.builder.
 		Insert(userTable).
 		Columns(
 			"first_name",
 			"last_name",
 			"email").
-		Values(user.FirstName, user.LastName, user.Email).
+		Values(newUser.FirstName, newUser.LastName, newUser.Email).
 		Suffix("RETURNING user_id").
 		ToSql()
 	if err != nil {
@@ -310,7 +307,7 @@ func (r *repo) createUser(ctx context.Context, tx pgx.Tx, user user.User) (int64
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return 0, fmt.Errorf("couldn't create an account: %w", service.ErrUserAlreadyExist)
+				return 0, fmt.Errorf("couldn't create an account: %w", user.ErrUserAlreadyExist)
 			}
 		}
 
@@ -335,7 +332,7 @@ func (r *repo) deleteSegment(ctx context.Context, tx pgx.Tx, segmentID int64) er
 
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
-		return segmentService.ErrSegmentNotFound
+		return segment.ErrSegmentNotFound
 	}
 
 	return nil
@@ -446,7 +443,7 @@ func (r *repo) getDeleteID(ctx context.Context, tx pgx.Tx, names string) (int64,
 		Scan(&segmentID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, segmentService.ErrSegmentNotFound
+			return 0, segment.ErrSegmentNotFound
 		}
 		return 0, fmt.Errorf("couldn't find segment id : %w", err)
 	}
@@ -567,7 +564,7 @@ func (r *repo) insertWithExpirity(ctx context.Context, tx pgx.Tx, userID int64, 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return fmt.Errorf("insert account: %w", memberService.ErrSegmentAlreadyAssigned)
+				return fmt.Errorf("insert account: %w", membership.ErrSegmentAlreadyAssigned)
 			}
 		}
 		return fmt.Errorf("couldn't run insert query : %w", err)
@@ -599,7 +596,7 @@ func (r *repo) insertDefault(ctx context.Context, tx pgx.Tx, userID int64, segme
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return fmt.Errorf("insert account: %w", memberService.ErrSegmentAlreadyAssigned)
+				return fmt.Errorf("insert account: %w", membership.ErrSegmentAlreadyAssigned)
 			}
 		}
 		return fmt.Errorf("couldn't run insert query : %w", err)
@@ -726,7 +723,7 @@ func (r *repo) registerInsertUserEvents(
 func (r *repo) registerCleanupUserEvents(
 	ctx context.Context,
 	tx pgx.Tx,
-	memberships []member.Membership,
+	memberships []membership.Membership,
 	timestamp time.Time,
 ) error {
 

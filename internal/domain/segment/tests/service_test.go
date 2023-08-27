@@ -1,12 +1,12 @@
-package service
+package segment
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/VrMolodyakov/segment-api/internal/domain/segment/model"
-	"github.com/VrMolodyakov/segment-api/internal/domain/segment/service/mocks"
+	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
+	"github.com/VrMolodyakov/segment-api/internal/domain/segment/mocks"
 	"github.com/VrMolodyakov/segment-api/pkg/logging"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +18,7 @@ func TestSaveSegment(t *testing.T) {
 	defer ctrl.Finish()
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
-	segmentService := New(mockRepo, mockLogger)
+	segmentService := segment.New(mockRepo, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -37,7 +37,7 @@ func TestSaveSegment(t *testing.T) {
 		{
 			title: "Successful segment creation",
 			mockCall: func() {
-				mockRepo.EXPECT().Get(gomock.Any(), gomock.Any()).Return(model.SegmentInfo{}, ErrSegmentNotFound)
+				mockRepo.EXPECT().Get(gomock.Any(), gomock.Any()).Return(segment.SegmentInfo{}, segment.ErrSegmentNotFound)
 				mockRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(segmentID, nil)
 			},
 			args: args{
@@ -48,7 +48,7 @@ func TestSaveSegment(t *testing.T) {
 		{
 			title: "Couldn't get sigment info should return error",
 			mockCall: func() {
-				mockRepo.EXPECT().Get(gomock.Any(), gomock.Any()).Return(model.SegmentInfo{}, errors.New("db internal error"))
+				mockRepo.EXPECT().Get(gomock.Any(), gomock.Any()).Return(segment.SegmentInfo{}, errors.New("db internal error"))
 			},
 			args: args{
 				"segment1",
@@ -59,7 +59,7 @@ func TestSaveSegment(t *testing.T) {
 		{
 			title: "Segment already exists should return error",
 			mockCall: func() {
-				mockRepo.EXPECT().Get(gomock.Any(), gomock.Any()).Return(model.SegmentInfo{Name: "segment1"}, nil)
+				mockRepo.EXPECT().Get(gomock.Any(), gomock.Any()).Return(segment.SegmentInfo{Name: "segment1"}, nil)
 			},
 			args: args{
 				"segment1",
@@ -88,25 +88,25 @@ func TestGetAllSegments(t *testing.T) {
 	defer ctrl.Finish()
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
-	segmentService := New(mockRepo, mockLogger)
+	segmentService := segment.New(mockRepo, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
-	s1 := model.SegmentInfo{Name: "segment1"}
-	s2 := model.SegmentInfo{Name: "segment2"}
+	s1 := segment.SegmentInfo{Name: "segment1"}
+	s2 := segment.SegmentInfo{Name: "segment2"}
 
 	testCases := []struct {
 		title    string
 		mockCall mockCall
-		expected []model.SegmentInfo
+		expected []segment.SegmentInfo
 		isError  bool
 	}{
 		{
 			title: "Successful getting segments",
 			mockCall: func() {
-				mockRepo.EXPECT().GetAll(gomock.All()).Return([]model.SegmentInfo{s1, s2}, nil)
+				mockRepo.EXPECT().GetAll(gomock.All()).Return([]segment.SegmentInfo{s1, s2}, nil)
 			},
-			expected: []model.SegmentInfo{s1, s2},
+			expected: []segment.SegmentInfo{s1, s2},
 		},
 		{
 			title: "Couldn't get segments should return error",
