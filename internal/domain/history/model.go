@@ -1,7 +1,7 @@
 package history
 
 import (
-	"bytes"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -26,22 +26,28 @@ type History struct {
 	Time      time.Time
 }
 
-type BufferPool interface {
-	Get() *bytes.Buffer
-	Release(buf *bytes.Buffer)
-}
-
 type Date struct {
 	Year  int
 	Month int
 }
 
+func (d Date) ToString() string {
+	return fmt.Sprintf("%d-%d", d.Year, d.Month)
+}
+
+func NewDate(year int, month int) Date {
+	return Date{
+		Year:  year,
+		Month: month,
+	}
+}
+
 func (d Date) Validate() error {
 	year, month, _ := time.Now().Date()
 	if d.Year < AvitoLaunchYear {
-		return ErrIncorrectDate
+		return ErrIncorrectYear
 	} else if d.Year == year && month < time.Month(d.Month) {
-		return ErrIncorrectDate
+		return ErrIncorrectMonth
 	}
 	return nil
 }
@@ -57,5 +63,5 @@ func (h History) Row() []string {
 }
 
 func (h History) Headers() []string {
-	return []string{"user", "segment", "operation", "date"}
+	return []string{"ID", "UserID", "Segment", "Operation", "Time"}
 }

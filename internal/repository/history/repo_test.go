@@ -73,7 +73,6 @@ func TestGetUserSegments(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			result, err := repo.Get(ctx, test.args.date)

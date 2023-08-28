@@ -53,10 +53,7 @@ func TestCreateSegment(t *testing.T) {
 	tests := []struct {
 		title            string
 		args             args
-		expected         CreateSegmentResponse
 		exoectedCode     int
-		expectedError    validator.ValidateError
-		isError          bool
 		mockCall         func()
 		expectedResponse func() string
 	}{
@@ -91,7 +88,6 @@ func TestCreateSegment(t *testing.T) {
 				return string(expectedJSON) + "\n"
 			},
 			exoectedCode: 400,
-			isError:      true,
 		},
 		{
 			title: "Segment already exists",
@@ -108,7 +104,6 @@ func TestCreateSegment(t *testing.T) {
 				return "Segment already exists\n"
 			},
 			exoectedCode: 400,
-			isError:      true,
 		},
 		{
 			title: "Service error",
@@ -125,12 +120,10 @@ func TestCreateSegment(t *testing.T) {
 				return "Create segment error\n"
 			},
 			exoectedCode: 500,
-			isError:      true,
 		},
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			w := httptest.NewRecorder()

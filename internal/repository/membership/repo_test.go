@@ -319,7 +319,6 @@ func TestUpdateUserSegments(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			err := repo.UpdateUserSegments(
@@ -400,7 +399,6 @@ func TestGetUserSegments(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			result, err := repo.GetUserSegments(ctx, test.args.userID)
@@ -695,7 +693,6 @@ func TestDeleteSegment(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			err := repo.DeleteSegment(
@@ -900,7 +897,6 @@ func TestCreateUser(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			got, err := repo.CreateUser(ctx, newUser)
@@ -1016,7 +1012,6 @@ func TestDeleteExpired(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			err := repo.DeleteExpired(ctx)

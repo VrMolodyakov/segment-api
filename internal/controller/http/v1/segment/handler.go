@@ -50,8 +50,7 @@ func (h *handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := NewSegmentResponse(id, segmentReq.Name, segmentReq.Percentage)
-	jsonResponse, err := json.Marshal(response)
+	jsonResponse, err := json.Marshal(NewSegmentResponse(id, segmentReq.Name, segmentReq.Percentage))
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return

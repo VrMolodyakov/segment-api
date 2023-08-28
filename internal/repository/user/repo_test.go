@@ -84,7 +84,6 @@ func TestGetUser(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			got, err := repo.Get(ctx, test.args.userID)

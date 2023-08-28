@@ -71,7 +71,6 @@ func TestCreateSegment(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			got, err := repo.Create(ctx, test.args.segment, test.args.percentage)
@@ -131,7 +130,6 @@ func TestGetAllSegments(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			result, err := repo.GetAll(ctx)
@@ -209,7 +207,6 @@ func TestGetSegment(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			got, err := repo.Get(ctx, test.name)

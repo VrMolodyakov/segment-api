@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/VrMolodyakov/segment-api/internal/domain/history"
@@ -36,11 +37,11 @@ func (r *repo) Get(ctx context.Context, date history.Date) ([]history.History, e
 		OrderBy("operation_timestamp").
 		ToSql()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't create query : %w", err)
 	}
 	rows, err := r.client.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't run query : %w", err)
 	}
 	defer rows.Close()
 
@@ -48,7 +49,7 @@ func (r *repo) Get(ctx context.Context, date history.Date) ([]history.History, e
 	for rows.Next() {
 		var history history.History
 		if err := rows.Scan(&history.UserID, &history.Segment, &history.Operation, &history.Time); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("couldn't scan history : %w", err)
 		}
 		histories = append(histories, history)
 	}
