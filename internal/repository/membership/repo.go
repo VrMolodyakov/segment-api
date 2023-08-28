@@ -418,11 +418,7 @@ func (r *repo) getDeleteIDs(ctx context.Context, tx pgx.Tx, names ...string) ([]
 	}
 
 	if len(ids) != len(names) {
-		return nil, fmt.Errorf(
-			"not all segments were found in the query, want %d , got %d",
-			len(names),
-			len(ids),
-		)
+		return nil, segment.ErrSegmentNotFound
 	}
 
 	return ids, nil
@@ -482,11 +478,7 @@ func (r *repo) fillInsertIDs(ctx context.Context, tx pgx.Tx, segments []segment.
 	}
 
 	if len(ids) != len(names) {
-		return fmt.Errorf(
-			"not all segments were found in the query, want %d , got %d",
-			len(names),
-			len(ids),
-		)
+		return segment.ErrSegmentNotFound
 	}
 
 	for i := range segments {

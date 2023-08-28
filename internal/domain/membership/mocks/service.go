@@ -11,6 +11,7 @@ import (
 
 	membership "github.com/VrMolodyakov/segment-api/internal/domain/membership"
 	segment "github.com/VrMolodyakov/segment-api/internal/domain/segment"
+	user "github.com/VrMolodyakov/segment-api/internal/domain/user"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -35,6 +36,21 @@ func NewMockMembershipRepository(ctrl *gomock.Controller) *MockMembershipReposit
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockMembershipRepository) EXPECT() *MockMembershipRepositoryMockRecorder {
 	return m.recorder
+}
+
+// CreateUser mocks base method.
+func (m *MockMembershipRepository) CreateUser(ctx context.Context, user user.User) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateUser", ctx, user)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateUser indicates an expected call of CreateUser.
+func (mr *MockMembershipRepositoryMockRecorder) CreateUser(ctx, user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockMembershipRepository)(nil).CreateUser), ctx, user)
 }
 
 // DeleteExpired mocks base method.

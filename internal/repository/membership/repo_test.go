@@ -354,7 +354,7 @@ func TestGetUserSegments(t *testing.T) {
 
 	userID := int64(1)
 
-	participationRecords := []membership.MembershipInfo{
+	membershipRecords := []membership.MembershipInfo{
 		{UserID: userID, SegmentName: "segment1", ExpiredAt: testTime},
 		{UserID: userID, SegmentName: "segment1", ExpiredAt: testTime},
 	}
@@ -371,11 +371,11 @@ func TestGetUserSegments(t *testing.T) {
 		mockCall func()
 	}{
 		{
-			title: "Should successfully retrieve user participation",
+			title: "Should successfully retrieve user membership",
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id", "segment_name", "expired_at"}).
-					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentName, participationRecords[0].ExpiredAt).
-					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentName, participationRecords[1].ExpiredAt)
+					AddRow(membershipRecords[0].UserID, membershipRecords[0].SegmentName, membershipRecords[0].ExpiredAt).
+					AddRow(membershipRecords[1].UserID, membershipRecords[1].SegmentName, membershipRecords[1].ExpiredAt)
 				mockClient.
 					ExpectQuery("SELECT user_id, segment_name, expired_at FROM user_segments").
 					WithArgs(userID, testTime).
@@ -383,7 +383,7 @@ func TestGetUserSegments(t *testing.T) {
 			},
 			args:     args{userID: userID},
 			isError:  false,
-			expected: participationRecords,
+			expected: membershipRecords,
 		},
 		{
 			title: "Database internal error",
@@ -931,7 +931,7 @@ func TestDeleteExpired(t *testing.T) {
 	userID1 := int64(1)
 	userID2 := int64(1)
 
-	participationRecords := []membership.MembershipInfo{
+	membershipRecords := []membership.MembershipInfo{
 		{UserID: userID1, SegmentName: "segment1", ExpiredAt: testTime},
 		{UserID: userID2, SegmentName: "segment2", ExpiredAt: testTime},
 	}
@@ -946,8 +946,8 @@ func TestDeleteExpired(t *testing.T) {
 			title: "Should successfully delete expired rows",
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id", "segment_name", "expired_at"}).
-					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentName, participationRecords[0].ExpiredAt).
-					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentName, participationRecords[1].ExpiredAt)
+					AddRow(membershipRecords[0].UserID, membershipRecords[0].SegmentName, membershipRecords[0].ExpiredAt).
+					AddRow(membershipRecords[1].UserID, membershipRecords[1].SegmentName, membershipRecords[1].ExpiredAt)
 				historyRows := []interface{}{
 					userID1, "segment1", history.Deleted, testTime,
 					userID2, "segment2", history.Deleted, testTime,
@@ -981,8 +981,8 @@ func TestDeleteExpired(t *testing.T) {
 			title: "Couldn't insert history rows",
 			mockCall: func() {
 				rows := pgxmock.NewRows([]string{"user_id", "segment_name", "expired_at"}).
-					AddRow(participationRecords[0].UserID, participationRecords[0].SegmentName, participationRecords[0].ExpiredAt).
-					AddRow(participationRecords[1].UserID, participationRecords[1].SegmentName, participationRecords[1].ExpiredAt)
+					AddRow(membershipRecords[0].UserID, membershipRecords[0].SegmentName, membershipRecords[0].ExpiredAt).
+					AddRow(membershipRecords[1].UserID, membershipRecords[1].SegmentName, membershipRecords[1].ExpiredAt)
 				historyRows := []interface{}{
 					userID1, "segment1", history.Deleted, testTime,
 					userID2, "segment2", history.Deleted, testTime,

@@ -1,11 +1,14 @@
 package history
 
 import (
+	"bytes"
+	"strconv"
 	"time"
 )
 
 const (
-	AvitoLaunchYear int = 2007
+	AvitoLaunchYear int    = 2007
+	timeFormat      string = "2006-01-02 15:04:05"
 )
 
 type Operation string
@@ -23,6 +26,11 @@ type History struct {
 	Time      time.Time
 }
 
+type BufferPool interface {
+	Get() *bytes.Buffer
+	Release(buf *bytes.Buffer)
+}
+
 type Date struct {
 	Year  int
 	Month int
@@ -36,4 +44,18 @@ func (d Date) Validate() error {
 		return ErrIncorrectDate
 	}
 	return nil
+}
+
+func (h History) Row() []string {
+	return []string{
+		strconv.FormatInt(h.ID, 10),
+		strconv.FormatInt(h.UserID, 10),
+		h.Segment,
+		string(h.Operation),
+		h.Time.Format(timeFormat),
+	}
+}
+
+func (h History) Headers() []string {
+	return []string{"user", "segment", "operation", "date"}
 }

@@ -11,7 +11,6 @@ var ErrUserNotFound = errors.New("user not found")
 var ErrUserAlreadyExist = errors.New("user already exist")
 
 type UserRepository interface {
-	Create(ctx context.Context, user User) (int64, error)
 	Get(ctx context.Context, userID int64) (User, error)
 }
 
@@ -25,11 +24,6 @@ func New(user UserRepository, logger logging.Logger) *service {
 		user:   user,
 		logger: logger,
 	}
-}
-
-func (s *service) CreateUser(ctx context.Context, user User) (int64, error) {
-	s.logger.Debugf("try to create user with email : %s", user.Email)
-	return s.user.Create(ctx, user)
 }
 
 func (s *service) GetUser(ctx context.Context, userID int64) (User, error) {

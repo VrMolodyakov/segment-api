@@ -16,9 +16,9 @@ type service struct {
 	membership MembershipRepository
 }
 
-func New(participation MembershipRepository, logger logging.Logger) *service {
+func New(membership MembershipRepository, logger logging.Logger) *service {
 	return &service{
-		membership: participation,
+		membership: membership,
 		logger:     logger,
 	}
 }

@@ -36,18 +36,18 @@ func (m *MockSegmentRepository) EXPECT() *MockSegmentRepositoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockSegmentRepository) Create(ctx context.Context, name string) (int64, error) {
+func (m *MockSegmentRepository) Create(ctx context.Context, name string, percentage int) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, name)
+	ret := m.ctrl.Call(m, "Create", ctx, name, percentage)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockSegmentRepositoryMockRecorder) Create(ctx, name interface{}) *gomock.Call {
+func (mr *MockSegmentRepositoryMockRecorder) Create(ctx, name, percentage interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSegmentRepository)(nil).Create), ctx, name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockSegmentRepository)(nil).Create), ctx, name, percentage)
 }
 
 // Get mocks base method.

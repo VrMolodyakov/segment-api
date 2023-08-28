@@ -23,7 +23,8 @@ func TestSaveSegment(t *testing.T) {
 	type mockCall func()
 
 	type args struct {
-		segment string
+		segment    string
+		percentage int
 	}
 	segmentID := int64(1)
 	emptyID := int64(0)
@@ -38,10 +39,11 @@ func TestSaveSegment(t *testing.T) {
 			title: "Successful segment creation",
 			mockCall: func() {
 				mockRepo.EXPECT().Get(gomock.Any(), gomock.Any()).Return(segment.SegmentInfo{}, segment.ErrSegmentNotFound)
-				mockRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(segmentID, nil)
+				mockRepo.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(segmentID, nil)
 			},
 			args: args{
 				"segment1",
+				1,
 			},
 			expected: segmentID,
 		},
@@ -52,6 +54,7 @@ func TestSaveSegment(t *testing.T) {
 			},
 			args: args{
 				"segment1",
+				10,
 			},
 			isError:  true,
 			expected: emptyID,
@@ -63,15 +66,29 @@ func TestSaveSegment(t *testing.T) {
 			},
 			args: args{
 				"segment1",
+				100,
 			},
 			isError:  true,
 			expected: emptyID,
+		},
+		{
+			title: "Error while creating new segment",
+			mockCall: func() {
+				mockRepo.EXPECT().Get(gomock.Any(), gomock.Any()).Return(segment.SegmentInfo{}, segment.ErrSegmentNotFound)
+				mockRepo.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(emptyID, errors.New("create error"))
+			},
+			args: args{
+				"segment1",
+				1,
+			},
+			expected: emptyID,
+			isError:  true,
 		},
 	}
 	for _, test := range testCases {
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
-			got, err := segmentService.CreateSegment(ctx, test.args.segment)
+			got, err := segmentService.CreateSegment(ctx, test.args.segment, test.args.percentage)
 			if test.isError {
 				assert.Error(t, err)
 			} else {

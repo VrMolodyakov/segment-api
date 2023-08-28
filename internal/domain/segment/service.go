@@ -11,7 +11,7 @@ var ErrSegmentNotFound = errors.New("sergment not found")
 var ErrSegmentAlreadyExists = errors.New("segment already exists")
 
 type SegmentRepository interface {
-	Create(ctx context.Context, name string) (int64, error)
+	Create(ctx context.Context, name string, percentage int) (int64, error)
 	Get(ctx context.Context, name string) (SegmentInfo, error)
 	GetAll(ctx context.Context) ([]SegmentInfo, error)
 }
@@ -28,7 +28,7 @@ func New(segment SegmentRepository, logger logging.Logger) *service {
 	}
 }
 
-func (s *service) CreateSegment(ctx context.Context, name string) (int64, error) {
+func (s *service) CreateSegment(ctx context.Context, name string, percentage int) (int64, error) {
 	s.logger.Debugf("try to create segment , name : %s", name)
 	if _, err := s.segment.Get(ctx, name); err != ErrSegmentNotFound {
 		if err == nil {
@@ -38,7 +38,7 @@ func (s *service) CreateSegment(ctx context.Context, name string) (int64, error)
 		return 0, err
 
 	}
-	return s.segment.Create(ctx, name)
+	return s.segment.Create(ctx, name, percentage)
 }
 
 func (s *service) GetAllSegments(ctx context.Context) ([]SegmentInfo, error) {

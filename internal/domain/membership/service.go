@@ -6,16 +6,21 @@ import (
 	"time"
 
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
+	"github.com/VrMolodyakov/segment-api/internal/domain/user"
+
 	"github.com/VrMolodyakov/segment-api/pkg/logging"
 )
 
-var ErrSegmentAlreadyAssigned = errors.New("segment already assigned")
+var (
+	ErrSegmentAlreadyAssigned = errors.New("segment already assigned")
+	ErrSegmentNotExists       = errors.New("not all segments were found")
+)
 
 type MembershipRepository interface {
 	UpdateUserSegments(ctx context.Context, userID int64, addSegments []segment.Segment, deleteSegments []string) error
 	DeleteSegment(ctx context.Context, name string) error
 	GetUserSegments(ctx context.Context, userID int64) ([]MembershipInfo, error)
-	DeleteExpired(ctx context.Context) error
+	CreateUser(ctx context.Context, user user.User) (int64, error)
 }
 
 type Cache interface {
@@ -30,9 +35,9 @@ type service struct {
 	membership      MembershipRepository
 }
 
-func New(participation MembershipRepository, cache Cache, expiration time.Duration, logger logging.Logger) *service {
+func New(membership MembershipRepository, cache Cache, expiration time.Duration, logger logging.Logger) *service {
 	return &service{
-		membership:      participation,
+		membership:      membership,
 		cache:           cache,
 		cacheExpiration: expiration,
 		logger:          logger,
@@ -61,4 +66,9 @@ func (s *service) GetUserMembership(ctx context.Context, userID int64) ([]Member
 	}
 	s.cache.Set(userID, info, s.cacheExpiration)
 	return info, nil
+}
+
+func (s *service) CreateUser(ctx context.Context, user user.User) (int64, error) {
+	s.logger.Debugf("try to create user %s ", user.Email)
+	return s.membership.CreateUser(ctx, user)
 }
