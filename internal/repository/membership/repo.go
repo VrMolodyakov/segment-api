@@ -23,11 +23,10 @@ const (
 	userTable         string = "users"
 	userSegmentsTable string = "user_segments"
 	historyTable      string = "segment_history"
-	maxExpireTime     string = "infinity"
 )
 
 var (
-	location, _ = time.LoadLocation("Europe/Moscow")
+	maxFutureTime = time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC)
 )
 
 type repo struct {
@@ -102,6 +101,7 @@ func (r *repo) DeleteSegment(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
+
 	if len(users) > 0 {
 		if err = r.deleteBySegmentID(ctx, tx, segmentID); err != nil {
 			return err
@@ -221,6 +221,10 @@ func (r *repo) DeleteExpired(ctx context.Context) error {
 		if err = r.registerCleanupUserEvents(ctx, tx, expired); err != nil {
 			return err
 		}
+
+		if err = r.deleteExpired(ctx, tx); err != nil {
+			return err
+		}
 	}
 
 	if err = tx.Commit(ctx); err != nil {
@@ -241,7 +245,7 @@ func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]membership.Memb
 		return nil, fmt.Errorf("couldn't create query : %w", err)
 	}
 
-	rows, err := r.client.Query(ctx, sql, args...)
+	rows, err := tx.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't run query : %w", err)
 	}
@@ -262,6 +266,22 @@ func (r *repo) getExpiredRows(ctx context.Context, tx pgx.Tx) ([]membership.Memb
 	return memberships, nil
 }
 
+func (r *repo) deleteExpired(ctx context.Context, tx pgx.Tx) error {
+	sql, args, err := r.builder.
+		Delete(userSegmentsTable).
+		Where(sq.Lt{"expired_at": r.clock.Now()}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("couldn't create query : %w", err)
+	}
+
+	_, err = tx.Exec(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("couldn't run query : %w", err)
+	}
+	return nil
+}
+
 func (r *repo) hitPercentage(ctx context.Context, tx pgx.Tx, percentage int) ([]segment.SegmentInfo, error) {
 	sql, args, err := r.builder.
 		Select(
@@ -273,7 +293,7 @@ func (r *repo) hitPercentage(ctx context.Context, tx pgx.Tx, percentage int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create query : %w", err)
 	}
-	rows, err := r.client.Query(ctx, sql, args...)
+	rows, err := tx.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -329,11 +349,10 @@ func (r *repo) deleteSegment(ctx context.Context, tx pgx.Tx, segmentID int64) er
 		return fmt.Errorf("couldn't create query : %w", err)
 	}
 
-	result, err := r.client.Exec(ctx, sql, args...)
+	result, err := tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("couldn't run query : %w", err)
 	}
-
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
 		return segment.ErrSegmentNotFound
@@ -428,19 +447,18 @@ func (r *repo) getDeleteIDs(ctx context.Context, tx pgx.Tx, names ...string) ([]
 	return ids, nil
 }
 
-func (r *repo) getDeleteID(ctx context.Context, tx pgx.Tx, names string) (int64, error) {
+func (r *repo) getDeleteID(ctx context.Context, tx pgx.Tx, name string) (int64, error) {
 	sql, args, err := r.builder.
 		Select("segment_id").
 		From(segmentTable).
-		Where(sq.Eq{"segment_name": names}).
+		Where(sq.Eq{"segment_name": name}).
 		ToSql()
 	if err != nil {
 		return 0, fmt.Errorf("couldn't create query : %w", err)
 	}
 	var segmentID int64
-	err = tx.
-		QueryRow(ctx, sql, args...).
-		Scan(&segmentID)
+	err = tx.QueryRow(ctx, sql, args...).Scan(&segmentID)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, segment.ErrSegmentNotFound
@@ -492,7 +510,6 @@ func (r *repo) fillInsertIDs(ctx context.Context, tx pgx.Tx, segments []segment.
 	return nil
 }
 
-// here
 func (r *repo) deleteUserSegments(ctx context.Context, tx pgx.Tx, userID int64, segmentIDs []int64) error {
 	sql, args, err := r.builder.
 		Delete(userSegmentsTable).
@@ -527,19 +544,15 @@ func (r *repo) deleteBySegmentID(ctx context.Context, tx pgx.Tx, segmentID int64
 	if err != nil {
 		return fmt.Errorf("couldn't create query : %w", err)
 	}
-
 	rows, err := tx.Exec(ctx, sql, args...)
 	if err != nil {
-
 		return fmt.Errorf("couldn't run query : %w", err)
 	}
-
 	if rows.RowsAffected() == int64(0) {
 		return fmt.Errorf(
 			"couldn't delete rows, rows affected %d", rows.RowsAffected(),
 		)
 	}
-
 	return nil
 }
 
@@ -547,7 +560,7 @@ func (r *repo) insertWithExpirity(ctx context.Context, tx pgx.Tx, userID int64, 
 	insertState := r.builder.Insert(userSegmentsTable).Columns("user_id", "segment_id", "expired_at")
 	for i := range segments {
 		if segments[i].ExpiredAt.IsZero() {
-			insertState = insertState.Values(userID, segments[i].ID, maxExpireTime)
+			insertState = insertState.Values(userID, segments[i].ID, maxFutureTime)
 		} else {
 			insertState = insertState.Values(userID, segments[i].ID, segments[i].ExpiredAt)
 		}
@@ -583,9 +596,9 @@ func (r *repo) insertWithExpirity(ctx context.Context, tx pgx.Tx, userID int64, 
 }
 
 func (r *repo) insertDefault(ctx context.Context, tx pgx.Tx, userID int64, segments []segment.SegmentInfo) error {
-	insertState := r.builder.Insert(userSegmentsTable).Columns("user_id", "segment_id")
+	insertState := r.builder.Insert(userSegmentsTable).Columns("user_id", "segment_id", "expired_at")
 	for i := range segments {
-		insertState = insertState.Values(userID, segments[i].ID)
+		insertState = insertState.Values(userID, segments[i].ID, maxFutureTime)
 	}
 
 	sql, args, err := insertState.ToSql()

@@ -1,5 +1,7 @@
 BEGIN;
 
+SET TIME ZONE 'Europe/Moscow';
+
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGSERIAL PRIMARY KEY,
     first_name VARCHAR(20) NOT NULL,
@@ -16,7 +18,7 @@ CREATE TABLE IF NOT EXISTS segments (
 CREATE TABLE IF NOT EXISTS user_segments (
     user_id BIGINT,
     segment_id BIGINT,
-    expired_at TIMESTAMPTZ NOT NULL DEFAULT 'infinity',
+    expired_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (user_id, segment_id),
     FOREIGN KEY (user_id) REFERENCES users (user_id),
     FOREIGN KEY (segment_id) REFERENCES segments (segment_id)

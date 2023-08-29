@@ -745,7 +745,7 @@ func TestCreateUser(t *testing.T) {
 				segmentsRows := pgxmock.NewRows([]string{"segment_id", "segment_name"}).
 					AddRow(segmentID1, "segment1").
 					AddRow(segmentID2, "segment2")
-				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
+				insertRecors := []interface{}{userID, segmentID1, maxFutureTime, userID, segmentID2, maxFutureTime}
 				historyRows := []interface{}{
 					userID, "segment1", history.Added, testTime,
 					userID, "segment2", history.Added, testTime,
@@ -816,7 +816,7 @@ func TestCreateUser(t *testing.T) {
 				segmentsRows := pgxmock.NewRows([]string{"segment_id", "segment_name"}).
 					AddRow(segmentID1, "segment1").
 					AddRow(segmentID2, "segment2")
-				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
+				insertRecors := []interface{}{userID, segmentID1, maxFutureTime, userID, segmentID2, maxFutureTime}
 				mockClient.
 					ExpectBegin()
 				mockClient.
@@ -844,7 +844,7 @@ func TestCreateUser(t *testing.T) {
 				segmentsRows := pgxmock.NewRows([]string{"segment_id", "segment_name"}).
 					AddRow(segmentID1, "segment1").
 					AddRow(segmentID2, "segment2")
-				insertRecors := []interface{}{userID, segmentID1, userID, segmentID2}
+				insertRecors := []interface{}{userID, segmentID1, maxFutureTime, userID, segmentID2, maxFutureTime}
 				historyRows := []interface{}{
 					userID, "segment1", history.Added, testTime,
 					userID, "segment2", history.Added, testTime,
@@ -956,6 +956,10 @@ func TestDeleteExpired(t *testing.T) {
 					ExpectExec("INSERT INTO segment_history").
 					WithArgs(historyRows...).
 					WillReturnResult(pgxmock.NewResult("INSERT", 2))
+				mockClient.
+					ExpectExec("DELETE FROM user_segments WHERE ").
+					WithArgs(testTime).
+					WillReturnResult(pgxmock.NewResult("DELETE", 2))
 				mockClient.ExpectCommit()
 			},
 			isError: false,

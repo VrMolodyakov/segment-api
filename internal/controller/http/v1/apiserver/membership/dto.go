@@ -7,6 +7,10 @@ import (
 	"github.com/VrMolodyakov/segment-api/internal/domain/user"
 )
 
+var (
+	location, _ = time.LoadLocation("Europe/Moscow")
+)
+
 type CreateUserRequest struct {
 	FirstName string `json:"firsName" validate:"required,min=3"`
 	LastName  string `json:"lastName" validate:"required,min=3"`
@@ -46,9 +50,13 @@ type UserResponseInfo struct {
 }
 
 func (u UpdateSegment) ToModel() segment.Segment {
+	var expired time.Time
+	if u.TTL > 0 {
+		expired = time.Now().Add(time.Second * time.Duration(u.TTL))
+	}
 	return segment.Segment{
 		Name:      u.Name,
-		ExpiredAt: time.Now().Add(time.Second * time.Duration(u.TTL)),
+		ExpiredAt: expired,
 	}
 }
 
@@ -62,7 +70,7 @@ func NewUserResponseInfo(id int64, segment string, expiredAt time.Time) UserResp
 	return UserResponseInfo{
 		UserID:      id,
 		SegmentName: segment,
-		ExpiredAt:   expiredAt,
+		ExpiredAt:   expiredAt.In(location),
 	}
 }
 

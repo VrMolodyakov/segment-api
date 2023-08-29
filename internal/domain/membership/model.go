@@ -13,3 +13,10 @@ type Membership struct {
 	SegmentID int64
 	ExpiredAt time.Time
 }
+
+type FullMembershipInfo struct {
+	UserID      int64
+	SegmentID   int64
+	SegmentName string
+	ExpiredAt   time.Time
+}
