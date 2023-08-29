@@ -23,7 +23,7 @@ func New(membership MembershipRepository, logger logging.Logger) *service {
 	}
 }
 
-func (s *service) StartDeleteExpired(ctx context.Context, interval time.Duration) {
+func (s *service) Start(ctx context.Context, interval time.Duration) {
 	if interval > 0 {
 		go s.deleteExpired(ctx, interval)
 	}

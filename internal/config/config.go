@@ -36,7 +36,12 @@ type Postgres struct {
 	SSLMode  string `env:"POSTGRES_SSL_MODE"`
 }
 
+type Cleaner struct {
+	Interval int `env:"CLEANUP_INTERVAL"`
+}
+
 type Config struct {
+	Cleaner  Cleaner
 	Cachce   Cachce
 	Logger   Logger
 	Postgres Postgres

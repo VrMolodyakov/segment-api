@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/api_server/membership/mocks"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/membership/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	"github.com/VrMolodyakov/segment-api/internal/domain/membership"
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment"

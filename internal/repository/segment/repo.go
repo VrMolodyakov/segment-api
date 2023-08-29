@@ -31,7 +31,7 @@ func (r *repo) Create(ctx context.Context, name string, percentage int) (int64, 
 	sql, args, err := r.builder.
 		Insert(segmentTable).
 		Columns("segment_name", "automatic_percentage").
-		Values(name).
+		Values(name, percentage).
 		Suffix("RETURNING segment_id").
 		ToSql()
 	if err != nil {

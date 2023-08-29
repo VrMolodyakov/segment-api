@@ -1,6 +1,11 @@
 package main
 
 import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/VrMolodyakov/segment-api/internal/app"
 	_ "github.com/VrMolodyakov/segment-api/internal/domain/segment"
 	_ "github.com/VrMolodyakov/segment-api/internal/domain/user"
 	_ "github.com/VrMolodyakov/segment-api/internal/repository/history"
@@ -10,24 +15,30 @@ import (
 )
 
 func main() {
-	// cfg, err := config.GetConfig()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	ctx := context.Background()
+	a := app.New()
 
-	// pgCfg := postgresql.NewPgConfig(
-	// 	cfg.Postgres.User,
-	// 	cfg.Postgres.Password,
-	// 	cfg.Postgres.Host,
-	// 	cfg.Postgres.Port,
-	// 	cfg.Postgres.Database,
-	// 	cfg.Postgres.PoolSize,
-	// 	cfg.Postgres.SSLMode,
-	// )
+	defer func() {
+		a.Close(ctx)
+	}()
 
-	// ctx := context.Background()
-	// client, err := postgresql.NewClient(ctx, 5, 10*time.Second, pgCfg)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	if err := a.ReadConfig(); err != nil {
+		log.Fatal(err, "read config")
+		return
+	}
+
+	logFile, err := os.Create("temp.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	a.InitLogger(os.Stderr, logFile)
+
+	if err := a.Setup(ctx); err != nil {
+		log.Fatal(err, "setup dependencies")
+		return
+	}
+
+	a.Start(ctx)
+
 }

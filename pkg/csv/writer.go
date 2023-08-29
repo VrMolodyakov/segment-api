@@ -28,9 +28,6 @@ func (csvw *csvWriter[T]) Write(w io.Writer, args []T) error {
 	return csvw.writer(w, args)
 }
 
-func Write1[T CSVWritable](args []T) {
-}
-
 func Write[T CSVWritable](w io.Writer, args []T) error {
 	writer := csv.NewWriter(w)
 	if len(args) == 0 {

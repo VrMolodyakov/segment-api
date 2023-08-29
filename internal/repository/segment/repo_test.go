@@ -49,7 +49,7 @@ func TestCreateSegment(t *testing.T) {
 				rows := pgxmock.NewRows([]string{"segment_id"}).AddRow(segmentID)
 				mockPSQLClient.
 					ExpectQuery("INSERT INTO segments").
-					WithArgs(newSegment.Name).
+					WithArgs(newSegment.Name, percentage).
 					WillReturnRows(rows)
 			},
 			expected: segmentID,
@@ -63,7 +63,7 @@ func TestCreateSegment(t *testing.T) {
 			mockCall: func() {
 				mockPSQLClient.
 					ExpectQuery("INSERT INTO segments").
-					WithArgs(newSegment.Name).
+					WithArgs(newSegment.Name, percentage).
 					WillReturnError(errors.New("internal database error"))
 			},
 			expected: int64(0),

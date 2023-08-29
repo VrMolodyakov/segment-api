@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/api_server/segment/mocks"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/segment/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	segmentService "github.com/VrMolodyakov/segment-api/internal/domain/segment"
 	"github.com/golang/mock/gomock"

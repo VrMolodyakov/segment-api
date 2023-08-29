@@ -10,7 +10,7 @@ import (
 var (
 	ErrUserNotFound     = errors.New("user not found")
 	ErrUserAlreadyExist = errors.New("user already exist")
-	ErrInvalidEmail     = errors.New("email validation error.include at least 1 symbol before @ and 2 symbols after")
+	ErrInvalidEmail     = errors.New("email validation error.include at least 1 symbol before @ and 2 symbols after and dot (example@example.com)")
 )
 
 type UserRepository interface {

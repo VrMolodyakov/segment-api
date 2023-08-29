@@ -26,6 +26,10 @@ const (
 	maxExpireTime     string = "infinity"
 )
 
+var (
+	location, _ = time.LoadLocation("Europe/Moscow")
+)
+
 type repo struct {
 	client  psql.Client
 	builder sq.StatementBuilderType
@@ -123,6 +127,7 @@ func (r *repo) GetUserSegments(ctx context.Context, id int64) ([]membership.Memb
 	sql, args, err := r.builder.
 		Select("user_id", "segment_name", "expired_at").
 		From(userSegmentsTable).
+		Join("segments USING (segment_id)").
 		Where(sq.Eq{"user_id": id}).
 		Where(sq.Gt{"expired_at": r.clock.Now()}).
 		ToSql()
