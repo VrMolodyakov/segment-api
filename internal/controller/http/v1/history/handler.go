@@ -74,7 +74,7 @@ func (h *handler) CreateLink(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Incorrect date, %s", err.Error()), http.StatusBadRequest)
 			return
 		}
-		http.Error(w, "Couldn't prepare history data, internal server error", http.StatusInternalServerError)
+		http.Error(w, "Couldn't prepare history data", http.StatusInternalServerError)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *handler) DownloadCSVData(w http.ResponseWriter, r *http.Request) {
 	defer h.pool.Release(buffer)
 
 	if err := h.writer.Write(buffer, data); err != nil {
-		http.Error(w, fmt.Sprintf("Couldn't build a csv file, %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Couldn't create a csv file, %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 

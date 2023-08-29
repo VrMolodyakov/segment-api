@@ -26,13 +26,13 @@ func TestCreateSegment(t *testing.T) {
 	}
 
 	segmentReq := CreateSegmentRequest{
-		Name:       "segment1",
-		Percentage: 10,
+		Name:          "segment1",
+		HitPercentage: 10,
 	}
 
 	invalidSegment := CreateSegmentRequest{
-		Name:       "s1",
-		Percentage: 10,
+		Name:          "s1",
+		HitPercentage: 10,
 	}
 
 	newSegmentID := int64(1)

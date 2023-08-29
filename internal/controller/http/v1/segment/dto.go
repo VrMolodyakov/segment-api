@@ -1,8 +1,8 @@
 package segment
 
 type CreateSegmentRequest struct {
-	Name       string `json:"name" validate:"required,min=6"`
-	Percentage int    `json:"hitPercentage" validate:"gt=-1"`
+	Name          string `json:"name" validate:"required,min=6"`
+	HitPercentage int    `json:"hitPercentage" validate:"gt=-1"`
 }
 
 type CreateSegmentResponse struct {

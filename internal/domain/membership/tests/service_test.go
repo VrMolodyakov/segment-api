@@ -9,6 +9,7 @@ import (
 	"github.com/VrMolodyakov/segment-api/internal/domain/membership"
 	"github.com/VrMolodyakov/segment-api/internal/domain/membership/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
+	"github.com/VrMolodyakov/segment-api/internal/domain/user"
 	"github.com/VrMolodyakov/segment-api/pkg/logging"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -60,7 +61,7 @@ func TestUpdateUserMembership(t *testing.T) {
 			},
 		},
 		{
-			title: "Segment already assigned and should return ErrSegmentAlreadyAssigned",
+			title: "Segment already assigned error",
 			mockCall: func() {
 				mockRepo.EXPECT().UpdateUserSegments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(membership.ErrSegmentAlreadyAssigned)
 			},
@@ -71,6 +72,56 @@ func TestUpdateUserMembership(t *testing.T) {
 			},
 			isError:   true,
 			expectErr: membership.ErrSegmentAlreadyAssigned,
+		},
+		{
+			title: "Segment already assigned error",
+			mockCall: func() {
+				mockRepo.EXPECT().UpdateUserSegments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(user.ErrUserNotFound)
+			},
+			args: args{
+				add:    add,
+				delete: delete,
+				userID: userID,
+			},
+			isError:   true,
+			expectErr: user.ErrUserNotFound,
+		},
+		{
+			title: "Segment not found error",
+			mockCall: func() {
+				mockRepo.EXPECT().UpdateUserSegments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(segment.ErrSegmentNotFound)
+			},
+			args: args{
+				add:    add,
+				delete: delete,
+				userID: userID,
+			},
+			isError:   true,
+			expectErr: segment.ErrSegmentNotFound,
+		},
+		{
+			title: "Empty data error",
+			mockCall: func() {
+			},
+			args: args{
+				add:    nil,
+				delete: nil,
+				userID: userID,
+			},
+			isError:   true,
+			expectErr: membership.ErrEmptyData,
+		},
+		{
+			title: "incorrect data error, the same elements",
+			mockCall: func() {
+			},
+			args: args{
+				add:    []segment.Segment{{Name: "seg-2"}, {Name: "seg-9"}},
+				delete: []string{"seg-1", "seg-2", "seg-10"},
+				userID: userID,
+			},
+			isError:   true,
+			expectErr: membership.ErrIncorrectData,
 		},
 	}
 	for _, test := range testCases {
@@ -232,39 +283,78 @@ func TestCreateUser(t *testing.T) {
 	type mockCall func()
 
 	userID := int64(1)
+	emptyID := int64(0)
 	type args struct {
-		userID int64
-	}
-
-	info := []membership.MembershipInfo{
-		{UserID: 1, SegmentName: "seg-1", ExpiredAt: time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)},
-		{UserID: 2, SegmentName: "seg-2", ExpiredAt: time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)},
+		user user.User
 	}
 
 	testCases := []struct {
-		title    string
-		mockCall mockCall
-		args     args
-		expected []membership.MembershipInfo
-		isError  bool
+		title         string
+		mockCall      mockCall
+		args          args
+		expected      int64
+		expectedError error
+		isError       bool
 	}{
 		{
-			title: "Not found in cache and successfully retrieves from repo",
+			title: "Successful user creation",
 			mockCall: func() {
-				mockCache.EXPECT().Get(gomock.Any()).Return(nil, false)
-				mockRepo.EXPECT().GetUserSegments(gomock.Any(), gomock.Any()).Return(info, nil)
-				mockCache.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any())
+				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(userID, nil)
 			},
 			args: args{
-				userID: userID,
+				user: user.User{
+					Email: "email@email.com",
+				},
 			},
-			expected: info,
+			expected: userID,
+		},
+		{
+			title: "Invalid email error",
+			mockCall: func() {
+				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, user.ErrInvalidEmail)
+			},
+			args: args{
+				user: user.User{
+					Email: "email@email.com",
+				},
+			},
+			expectedError: user.ErrInvalidEmail,
+			expected:      emptyID,
+			isError:       true,
+		},
+		{
+			title: "User already exists error",
+			mockCall: func() {
+				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, user.ErrUserAlreadyExist)
+			},
+			args: args{
+				user: user.User{
+					Email: "email@email.com",
+				},
+			},
+			expectedError: user.ErrUserAlreadyExist,
+			expected:      emptyID,
+			isError:       true,
+		},
+		{
+			title: "Error while inserting new user",
+			mockCall: func() {
+				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, errors.New("error"))
+			},
+			args: args{
+				user: user.User{
+					Email: "email@email.com",
+				},
+			},
+			expectedError: errors.New("error"),
+			expected:      emptyID,
+			isError:       true,
 		},
 	}
 	for _, test := range testCases {
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
-			got, err := membershipService.GetUserMembership(ctx, test.args.userID)
+			got, err := membershipService.CreateUser(ctx, test.args.user)
 			if test.isError {
 				assert.Error(t, err)
 			} else {

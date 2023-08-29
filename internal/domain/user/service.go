@@ -7,8 +7,11 @@ import (
 	"github.com/VrMolodyakov/segment-api/pkg/logging"
 )
 
-var ErrUserNotFound = errors.New("user not found")
-var ErrUserAlreadyExist = errors.New("user already exist")
+var (
+	ErrUserNotFound     = errors.New("user not found")
+	ErrUserAlreadyExist = errors.New("user already exist")
+	ErrInvalidEmail     = errors.New("email validation error.include at least 1 symbol before @ and 2 symbols after")
+)
 
 type UserRepository interface {
 	Get(ctx context.Context, userID int64) (User, error)

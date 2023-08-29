@@ -3,8 +3,8 @@ package history
 import "github.com/VrMolodyakov/segment-api/internal/domain/history"
 
 type CreateLinkRequest struct {
-	Year  int `json:"year" validate:"gt=-1"`
-	Month int `json:"month" validate:"gt=-1,lt=13"`
+	Year  int `json:"year" validate:"required,gt=-1"`
+	Month int `json:"month" validate:"required,gt=-1,lt=13"`
 }
 
 type CreateLinkResponse struct {

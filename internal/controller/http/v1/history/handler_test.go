@@ -36,7 +36,7 @@ func AddChiURLParams(r *http.Request, params map[string]string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, ctx))
 }
 
-func TestCreateSegment(t *testing.T) {
+func TestCreateLink(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockService := mocks.NewMockHistoryService(ctrl)
@@ -136,7 +136,7 @@ func TestCreateSegment(t *testing.T) {
 				return "Incorrect date, history for dates before 2007 year is not available\n"
 			},
 			args: args{
-				req: CreateLinkRequest{},
+				req: CreateLinkRequest{Year: 1994, Month: 1},
 			},
 			exoectedCode: 400,
 		},
@@ -149,7 +149,7 @@ func TestCreateSegment(t *testing.T) {
 				return "Incorrect date, impossible to get information for a month that has not yet come\n"
 			},
 			args: args{
-				req: CreateLinkRequest{},
+				req: CreateLinkRequest{Year: 1994, Month: 1},
 			},
 			exoectedCode: 400,
 		},
@@ -159,10 +159,10 @@ func TestCreateSegment(t *testing.T) {
 				mockService.EXPECT().PrepareHistoryData(gomock.Any(), gomock.Any()).Return(errors.New("service error"))
 			},
 			expectedResponse: func() string {
-				return "Couldn't prepare history data, internal server error\n"
+				return "Couldn't prepare history data\n"
 			},
 			args: args{
-				req: CreateLinkRequest{},
+				req: CreateLinkRequest{Year: 2023, Month: 8},
 			},
 			exoectedCode: 500,
 		},
@@ -314,7 +314,7 @@ func TestDownloadCSVData(t *testing.T) {
 				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return([]history.History{}, nil)
 			},
 			expectedResponse: func() string {
-				return "Couldn't build a csv file, error\n"
+				return "Couldn't create a csv file, error\n"
 			},
 			args: args{
 				reqParam: map[string]string{

@@ -1,5 +1,13 @@
 package user
 
+import (
+	"regexp"
+)
+
+var (
+	emailRegex = regexp.MustCompile(`^.+@[^\.].*\.[a-z]{2,}$`)
+)
+
 type UserID int
 
 type User struct {
@@ -7,4 +15,11 @@ type User struct {
 	FirstName string
 	LastName  string
 	Email     string
+}
+
+func (u User) Valid() error {
+	if !emailRegex.MatchString(u.Email) {
+		return ErrInvalidEmail
+	}
+	return nil
 }

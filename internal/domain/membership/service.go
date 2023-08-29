@@ -14,6 +14,8 @@ import (
 var (
 	ErrSegmentAlreadyAssigned = errors.New("segment already assigned")
 	ErrSegmentNotExists       = errors.New("not all segments were found")
+	ErrEmptyData              = errors.New("data for updating and for deletion were not provided")
+	ErrIncorrectData          = errors.New("attempt to add and remove the same segment")
 )
 
 type MembershipRepository interface {
@@ -44,11 +46,6 @@ func New(membership MembershipRepository, cache Cache, expiration time.Duration,
 	}
 }
 
-func (s *service) UpdateUserMembership(ctx context.Context, userID int64, addSegments []segment.Segment, deleteSegments []string) error {
-	s.logger.Debugf("try to update user = %d segments %v delete segments %v", addSegments, deleteSegments)
-	return s.membership.UpdateUserSegments(ctx, userID, addSegments, deleteSegments)
-}
-
 func (s *service) DeleteMembership(ctx context.Context, segmentName string) error {
 	s.logger.Debugf("try to delete %s segment", segmentName)
 	return s.membership.DeleteSegment(ctx, segmentName)
@@ -70,5 +67,45 @@ func (s *service) GetUserMembership(ctx context.Context, userID int64) ([]Member
 
 func (s *service) CreateUser(ctx context.Context, user user.User) (int64, error) {
 	s.logger.Debugf("try to create user %s ", user.Email)
+	if err := user.Valid(); err != nil {
+		s.logger.Errorf("invalid email %s", user.Email)
+		return 0, err
+	}
 	return s.membership.CreateUser(ctx, user)
+}
+
+func (s *service) UpdateUserMembership(
+	ctx context.Context,
+	userID int64,
+	addSegments []segment.Segment,
+	deleteSegments []string,
+) error {
+	s.logger.Debugf("try to update user = %d segments %v delete segments %v", addSegments, deleteSegments)
+	if err := validateUpdatedData(addSegments, deleteSegments); err != nil {
+		return err
+	}
+	return s.membership.UpdateUserSegments(ctx, userID, addSegments, deleteSegments)
+}
+
+func validateUpdatedData(add []segment.Segment, delete []string) error {
+	if len(add) == 0 && len(delete) == 0 {
+		return ErrEmptyData
+	}
+	set := make(map[string]struct{}, max(len(add), len(delete)))
+	for i := range add {
+		set[add[i].Name] = struct{}{}
+	}
+	for i := range delete {
+		if _, ok := set[delete[i]]; ok {
+			return ErrIncorrectData
+		}
+	}
+	return nil
+}
+
+func max(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

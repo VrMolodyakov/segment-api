@@ -11,6 +11,10 @@ import (
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
 )
 
+const (
+	max int = 100
+)
+
 type SegmentService interface {
 	CreateSegment(ctx context.Context, name string, percentage int) (int64, error)
 }
@@ -39,7 +43,7 @@ func (h *handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := h.segment.CreateSegment(r.Context(), segmentReq.Name, segmentReq.Percentage)
+	id, err := h.segment.CreateSegment(r.Context(), segmentReq.Name, max-segmentReq.HitPercentage)
 	if err != nil {
 		switch {
 		case errors.Is(err, segment.ErrSegmentAlreadyExists):
@@ -50,7 +54,7 @@ func (h *handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonResponse, err := json.Marshal(NewSegmentResponse(id, segmentReq.Name, segmentReq.Percentage))
+	jsonResponse, err := json.Marshal(NewSegmentResponse(id, segmentReq.Name, segmentReq.HitPercentage))
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return

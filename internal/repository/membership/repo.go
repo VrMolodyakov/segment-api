@@ -214,7 +214,7 @@ func (r *repo) DeleteExpired(ctx context.Context) error {
 	}
 
 	if len(expired) > 0 {
-		if err = r.registerCleanupUserEvents(ctx, tx, expired, r.clock.Now()); err != nil {
+		if err = r.registerCleanupUserEvents(ctx, tx, expired); err != nil {
 			return err
 		}
 	}
@@ -488,6 +488,7 @@ func (r *repo) fillInsertIDs(ctx context.Context, tx pgx.Tx, segments []segment.
 	return nil
 }
 
+// here
 func (r *repo) deleteUserSegments(ctx context.Context, tx pgx.Tx, userID int64, segmentIDs []int64) error {
 	sql, args, err := r.builder.
 		Delete(userSegmentsTable).
@@ -514,10 +515,10 @@ func (r *repo) deleteUserSegments(ctx context.Context, tx pgx.Tx, userID int64, 
 	return nil
 }
 
-func (r *repo) deleteBySegmentID(ctx context.Context, tx pgx.Tx, segmentIDs int64) error {
+func (r *repo) deleteBySegmentID(ctx context.Context, tx pgx.Tx, segmentID int64) error {
 	sql, args, err := r.builder.
 		Delete(userSegmentsTable).
-		Where(sq.Eq{"segment_id": segmentIDs}).
+		Where(sq.Eq{"segment_id": segmentID}).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("couldn't create query : %w", err)
@@ -525,6 +526,7 @@ func (r *repo) deleteBySegmentID(ctx context.Context, tx pgx.Tx, segmentIDs int6
 
 	rows, err := tx.Exec(ctx, sql, args...)
 	if err != nil {
+
 		return fmt.Errorf("couldn't run query : %w", err)
 	}
 
@@ -556,7 +558,10 @@ func (r *repo) insertWithExpirity(ctx context.Context, tx pgx.Tx, userID int64, 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
-				return fmt.Errorf("insert account: %w", membership.ErrSegmentAlreadyAssigned)
+				return fmt.Errorf("insert user: %w", membership.ErrSegmentAlreadyAssigned)
+			}
+			if pgErr.Code == pgerrcode.ForeignKeyViolation {
+				return fmt.Errorf("insert user: %w", user.ErrUserNotFound)
 			}
 		}
 		return fmt.Errorf("couldn't run insert query : %w", err)
@@ -585,12 +590,6 @@ func (r *repo) insertDefault(ctx context.Context, tx pgx.Tx, userID int64, segme
 	}
 	rows, err := tx.Exec(ctx, sql, args...)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-				return fmt.Errorf("insert account: %w", membership.ErrSegmentAlreadyAssigned)
-			}
-		}
 		return fmt.Errorf("couldn't run insert query : %w", err)
 	}
 
@@ -716,13 +715,17 @@ func (r *repo) registerCleanupUserEvents(
 	ctx context.Context,
 	tx pgx.Tx,
 	memberships []membership.MembershipInfo,
-	timestamp time.Time,
 ) error {
 
 	insertState := r.builder.Insert(historyTable).Columns("user_id", "segment_name", "operation", "operation_timestamp")
 
 	for i := range memberships {
-		insertState = insertState.Values(memberships[i].UserID, memberships[i].SegmentName, history.Deleted, timestamp)
+		insertState = insertState.Values(
+			memberships[i].UserID,
+			memberships[i].SegmentName,
+			history.Deleted,
+			memberships[i].ExpiredAt,
+		)
 	}
 
 	sql, args, err := insertState.ToSql()
