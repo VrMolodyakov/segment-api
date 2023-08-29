@@ -120,20 +120,8 @@ func (h *handler) UpdateUserMembership(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) DeleteMembership(w http.ResponseWriter, r *http.Request) {
-	var deleteReq DeleteSegmentRequest
-	if err := json.NewDecoder(r.Body).Decode(&deleteReq); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %s", err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	errs := validator.Validate(deleteReq)
-	if errs != nil {
-		jsonErr, _ := json.Marshal(errs)
-		http.Error(w, string(jsonErr), http.StatusBadRequest)
-		return
-	}
-
-	err := h.membership.DeleteMembership(r.Context(), deleteReq.Name)
+	name := chi.URLParam(r, "segmentName")
+	err := h.membership.DeleteMembership(r.Context(), name)
 	if err != nil {
 		switch {
 		case errors.Is(err, segment.ErrSegmentNotFound):

@@ -24,10 +24,6 @@ func NewTestClock(currentTime time.Time) *mockClock {
 	}
 }
 
-type mockRand struct{}
-
-func (m *mockRand) Next() int { return 1 }
-
 func (tc *mockClock) Now() time.Time {
 	return tc.currentTime
 }
@@ -50,7 +46,7 @@ func TestUpdateUserSegments(t *testing.T) {
 
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock, &mockRand{})
+	repo := New(mockClient, clock)
 
 	userID := int64(1)
 	insertID1, insertID2, deleteID1, deleteID2 := int64(1), int64(2), int64(3), int64(4)
@@ -353,7 +349,7 @@ func TestGetUserSegments(t *testing.T) {
 	defer mockClient.Close()
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock, &mockRand{})
+	repo := New(mockClient, clock)
 
 	userID := int64(1)
 
@@ -430,7 +426,7 @@ func TestDeleteSegment(t *testing.T) {
 
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock, &mockRand{})
+	repo := New(mockClient, clock)
 
 	userID1, userID2 := int64(1), int64(2)
 	deleteID1 := int64(1)
@@ -726,10 +722,9 @@ func TestCreateUser(t *testing.T) {
 
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock, &mockRand{})
-
+	repo := New(mockClient, clock)
+	hitPercentage := 10
 	userID := int64(1)
-	percentage := 1
 	segmentID1, segmentID2 := int64(1), int64(2)
 	newUser := user.User{
 		FirstName: "Arnold",
@@ -763,7 +758,7 @@ func TestCreateUser(t *testing.T) {
 					WillReturnRows(rows)
 				mockClient.
 					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
-					WithArgs(percentage).
+					WithArgs(hitPercentage).
 					WillReturnRows(segmentsRows)
 				mockClient.
 					ExpectExec("INSERT INTO user_segments").
@@ -806,7 +801,7 @@ func TestCreateUser(t *testing.T) {
 					WillReturnRows(rows)
 				mockClient.
 					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
-					WithArgs(percentage).
+					WithArgs(hitPercentage).
 					WillReturnError(errors.New("cannot find"))
 				mockClient.
 					ExpectRollback()
@@ -830,7 +825,7 @@ func TestCreateUser(t *testing.T) {
 					WillReturnRows(rows)
 				mockClient.
 					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
-					WithArgs(percentage).
+					WithArgs(hitPercentage).
 					WillReturnRows(segmentsRows)
 				mockClient.
 					ExpectExec("INSERT INTO user_segments").
@@ -862,7 +857,7 @@ func TestCreateUser(t *testing.T) {
 					WillReturnRows(rows)
 				mockClient.
 					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
-					WithArgs(percentage).
+					WithArgs(hitPercentage).
 					WillReturnRows(segmentsRows)
 				mockClient.
 					ExpectExec("INSERT INTO user_segments").
@@ -891,7 +886,7 @@ func TestCreateUser(t *testing.T) {
 					WillReturnRows(rows)
 				mockClient.
 					ExpectQuery("SELECT segment_id, segment_name FROM segments WHERE ").
-					WithArgs(percentage).
+					WithArgs(hitPercentage).
 					WillReturnRows(segmentsRows)
 				mockClient.
 					ExpectCommit()
@@ -903,7 +898,7 @@ func TestCreateUser(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
-			got, err := repo.CreateUser(ctx, newUser)
+			got, err := repo.CreateUser(ctx, newUser, hitPercentage)
 			if test.isError {
 				assert.Error(t, err)
 			} else {
@@ -926,7 +921,7 @@ func TestDeleteExpired(t *testing.T) {
 	defer mockClient.Close()
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock, &mockRand{})
+	repo := New(mockClient, clock)
 
 	userID1 := int64(1)
 	userID2 := int64(1)

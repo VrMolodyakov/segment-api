@@ -13,7 +13,6 @@ import (
 	"github.com/VrMolodyakov/segment-api/internal/domain/user"
 	psql "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
 	"github.com/VrMolodyakov/segment-api/pkg/clock"
-	"github.com/VrMolodyakov/segment-api/pkg/random"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -28,18 +27,16 @@ const (
 )
 
 type repo struct {
-	client    psql.Client
-	builder   sq.StatementBuilderType
-	clock     clock.Clock
-	generator random.Rand
+	client  psql.Client
+	builder sq.StatementBuilderType
+	clock   clock.Clock
 }
 
-func New(client psql.Client, clock clock.Clock, generator random.Rand) *repo {
+func New(client psql.Client, clock clock.Clock) *repo {
 	return &repo{
-		client:    client,
-		clock:     clock,
-		generator: generator,
-		builder:   sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
+		client:  client,
+		clock:   clock,
+		builder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}
 }
 
@@ -122,11 +119,11 @@ func (r *repo) DeleteSegment(ctx context.Context, name string) error {
 	return nil
 }
 
-func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]membership.MembershipInfo, error) {
+func (r *repo) GetUserSegments(ctx context.Context, id int64) ([]membership.MembershipInfo, error) {
 	sql, args, err := r.builder.
 		Select("user_id", "segment_name", "expired_at").
 		From(userSegmentsTable).
-		Where(sq.Eq{"user_id": userID}).
+		Where(sq.Eq{"user_id": id}).
 		Where(sq.Gt{"expired_at": r.clock.Now()}).
 		ToSql()
 	if err != nil {
@@ -154,7 +151,7 @@ func (r *repo) GetUserSegments(ctx context.Context, userID int64) ([]membership.
 	return memberships, nil
 }
 
-func (r *repo) CreateUser(ctx context.Context, user user.User) (int64, error) {
+func (r *repo) CreateUser(ctx context.Context, user user.User, hitPercentage int) (int64, error) {
 	tx, err := r.client.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("couldn't begin transaction: %w", err)
@@ -174,7 +171,7 @@ func (r *repo) CreateUser(ctx context.Context, user user.User) (int64, error) {
 		return 0, err
 	}
 
-	segments, err := r.hitPercentage(ctx, tx, r.generator.Next())
+	segments, err := r.hitPercentage(ctx, tx, hitPercentage)
 	if err != nil {
 		return 0, err
 	}

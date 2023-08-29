@@ -34,6 +34,13 @@ type LinkParam struct {
 	Port int
 }
 
+func NewLinkParam(host string, port int) LinkParam {
+	return LinkParam{
+		Host: host,
+		Port: port,
+	}
+}
+
 type handler struct {
 	parameters LinkParam
 	writer     CSVWriter

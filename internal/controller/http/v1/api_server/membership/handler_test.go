@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/membership/mocks"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/api_server/membership/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	"github.com/VrMolodyakov/segment-api/internal/domain/membership"
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
@@ -355,7 +355,7 @@ func TestDeleteMembership(t *testing.T) {
 	handler := New(mockService)
 
 	type args struct {
-		req DeleteSegmentRequest
+		param map[string]string
 	}
 
 	tests := []struct {
@@ -374,29 +374,9 @@ func TestDeleteMembership(t *testing.T) {
 				return ""
 			},
 			args: args{
-				DeleteSegmentRequest{"segment-1"},
+				map[string]string{"segmentName": "segment-1"},
 			},
 			exoectedCode: 200,
-		},
-		{
-			title: "Validate user error",
-			mockCall: func() {
-			},
-			expectedResponse: func() string {
-				expectedJSON, err := json.Marshal([]validator.ValidateError{
-					{
-						Field: "Name",
-						Tag:   "min",
-						Param: "6",
-					},
-				})
-				assert.NoError(t, err)
-				return string(expectedJSON) + "\n"
-			},
-			args: args{
-				DeleteSegmentRequest{"s"},
-			},
-			exoectedCode: 400,
 		},
 		{
 			title: "Segment not found",
@@ -407,7 +387,7 @@ func TestDeleteMembership(t *testing.T) {
 				return "Segment with the specified name wasn't found\n"
 			},
 			args: args{
-				DeleteSegmentRequest{"segment-1"},
+				map[string]string{"segmentName": "segment-1"},
 			},
 			exoectedCode: 400,
 		},
@@ -420,7 +400,7 @@ func TestDeleteMembership(t *testing.T) {
 				return "Delete segment\n"
 			},
 			args: args{
-				DeleteSegmentRequest{"segment-1"},
+				map[string]string{"segmentName": "segment-1"},
 			},
 			exoectedCode: 500,
 		},
@@ -430,10 +410,9 @@ func TestDeleteMembership(t *testing.T) {
 		t.Run(test.title, func(t *testing.T) {
 			test.mockCall()
 			w := httptest.NewRecorder()
-			reqBody, err := json.Marshal(test.args.req)
+			req, err := http.NewRequest(http.MethodDelete, "", nil)
 			assert.NoError(t, err)
-			req, err := http.NewRequest(http.MethodPost, "", bytes.NewBuffer(reqBody))
-			assert.NoError(t, err)
+			req = AddChiURLParams(req, test.args.param)
 			handler.DeleteMembership(w, req)
 			assert.Equal(t, test.expectedResponse(), w.Body.String())
 			assert.Equal(t, test.exoectedCode, w.Code)

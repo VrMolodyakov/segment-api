@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/history/mocks"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/api_server/history/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	"github.com/VrMolodyakov/segment-api/internal/domain/history"
 	"github.com/VrMolodyakov/segment-api/pkg/csv"

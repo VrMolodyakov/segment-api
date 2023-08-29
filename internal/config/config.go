@@ -14,6 +14,11 @@ type Logger struct {
 	Level       string `env:"LOGGER_LEVEL"`
 }
 
+type Cachce struct {
+	CSVExpiration     int `env:"CSV_CACHE_EXPIRATION"`
+	SegmentExpiration int `env:"SEGMENT_CACHE_EXPIRATION"`
+}
+
 type HTTP struct {
 	Host         string `env:"HTTP_HOST"`
 	Port         int    `env:"HTTP_PORT"`
@@ -32,6 +37,7 @@ type Postgres struct {
 }
 
 type Config struct {
+	Cachce   Cachce
 	Logger   Logger
 	Postgres Postgres
 	HTTP     HTTP

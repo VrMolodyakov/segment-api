@@ -15,6 +15,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type mockRandom struct{}
+
+func (m *mockRandom) Next() int { return 0 }
+
 func TestUpdateUserMembership(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockRepo := mocks.NewMockMembershipRepository(ctrl)
@@ -22,7 +26,7 @@ func TestUpdateUserMembership(t *testing.T) {
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
 	mockCache := mocks.NewMockCache(ctrl)
-	membershipService := membership.New(mockRepo, mockCache, 1*time.Minute, mockLogger)
+	membershipService := membership.New(mockRepo, mockCache, 1*time.Minute, &mockRandom{}, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -145,7 +149,7 @@ func TestDeleteMembership(t *testing.T) {
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
 	mockCache := mocks.NewMockCache(ctrl)
-	membershipService := membership.New(mockRepo, mockCache, 1*time.Minute, mockLogger)
+	membershipService := membership.New(mockRepo, mockCache, 1*time.Minute, &mockRandom{}, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -202,7 +206,7 @@ func TestGetUserSegments(t *testing.T) {
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
 	mockCache := mocks.NewMockCache(ctrl)
-	membershipService := membership.New(mockRepo, mockCache, 1*time.Minute, mockLogger)
+	membershipService := membership.New(mockRepo, mockCache, 1*time.Minute, &mockRandom{}, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -278,7 +282,7 @@ func TestCreateUser(t *testing.T) {
 	mockLogger, err := logging.MockLogger()
 	assert.NoError(t, err)
 	mockCache := mocks.NewMockCache(ctrl)
-	membershipService := membership.New(mockRepo, mockCache, 1*time.Minute, mockLogger)
+	membershipService := membership.New(mockRepo, mockCache, 1*time.Minute, &mockRandom{}, mockLogger)
 	ctx := context.Background()
 	type mockCall func()
 
@@ -299,7 +303,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			title: "Successful user creation",
 			mockCall: func() {
-				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(userID, nil)
+				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(userID, nil)
 			},
 			args: args{
 				user: user.User{
@@ -311,7 +315,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			title: "Invalid email error",
 			mockCall: func() {
-				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, user.ErrInvalidEmail)
+				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(emptyID, user.ErrInvalidEmail)
 			},
 			args: args{
 				user: user.User{
@@ -325,7 +329,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			title: "User already exists error",
 			mockCall: func() {
-				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, user.ErrUserAlreadyExist)
+				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(emptyID, user.ErrUserAlreadyExist)
 			},
 			args: args{
 				user: user.User{
@@ -339,7 +343,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			title: "Error while inserting new user",
 			mockCall: func() {
-				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, errors.New("error"))
+				mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any(), gomock.Any()).Return(emptyID, errors.New("error"))
 			},
 			args: args{
 				user: user.User{

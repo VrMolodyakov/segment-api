@@ -39,32 +39,18 @@ func (m *MockMembershipRepository) EXPECT() *MockMembershipRepositoryMockRecorde
 }
 
 // CreateUser mocks base method.
-func (m *MockMembershipRepository) CreateUser(ctx context.Context, user user.User) (int64, error) {
+func (m *MockMembershipRepository) CreateUser(ctx context.Context, user user.User, hitPercentage int) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUser", ctx, user)
+	ret := m.ctrl.Call(m, "CreateUser", ctx, user, hitPercentage)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateUser indicates an expected call of CreateUser.
-func (mr *MockMembershipRepositoryMockRecorder) CreateUser(ctx, user interface{}) *gomock.Call {
+func (mr *MockMembershipRepositoryMockRecorder) CreateUser(ctx, user, hitPercentage interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockMembershipRepository)(nil).CreateUser), ctx, user)
-}
-
-// DeleteExpired mocks base method.
-func (m *MockMembershipRepository) DeleteExpired(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteExpired", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DeleteExpired indicates an expected call of DeleteExpired.
-func (mr *MockMembershipRepositoryMockRecorder) DeleteExpired(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteExpired", reflect.TypeOf((*MockMembershipRepository)(nil).DeleteExpired), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockMembershipRepository)(nil).CreateUser), ctx, user, hitPercentage)
 }
 
 // DeleteSegment mocks base method.

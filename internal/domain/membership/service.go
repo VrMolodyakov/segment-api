@@ -9,6 +9,7 @@ import (
 	"github.com/VrMolodyakov/segment-api/internal/domain/user"
 
 	"github.com/VrMolodyakov/segment-api/pkg/logging"
+	"github.com/VrMolodyakov/segment-api/pkg/random"
 )
 
 var (
@@ -22,7 +23,7 @@ type MembershipRepository interface {
 	UpdateUserSegments(ctx context.Context, userID int64, addSegments []segment.Segment, deleteSegments []string) error
 	DeleteSegment(ctx context.Context, name string) error
 	GetUserSegments(ctx context.Context, userID int64) ([]MembershipInfo, error)
-	CreateUser(ctx context.Context, user user.User) (int64, error)
+	CreateUser(ctx context.Context, user user.User, hitPercentage int) (int64, error)
 }
 
 type Cache interface {
@@ -34,13 +35,22 @@ type service struct {
 	logger          logging.Logger
 	cache           Cache
 	cacheExpiration time.Duration
+	generator       random.Rand
 	membership      MembershipRepository
 }
 
-func New(membership MembershipRepository, cache Cache, expiration time.Duration, logger logging.Logger) *service {
+func New(
+	membership MembershipRepository,
+	cache Cache,
+	expiration time.Duration,
+	generator random.Rand,
+	logger logging.Logger,
+) *service {
+
 	return &service{
 		membership:      membership,
 		cache:           cache,
+		generator:       generator,
 		cacheExpiration: expiration,
 		logger:          logger,
 	}
@@ -71,7 +81,7 @@ func (s *service) CreateUser(ctx context.Context, user user.User) (int64, error)
 		s.logger.Errorf("invalid email %s", user.Email)
 		return 0, err
 	}
-	return s.membership.CreateUser(ctx, user)
+	return s.membership.CreateUser(ctx, user, s.generator.Next())
 }
 
 func (s *service) UpdateUserMembership(
