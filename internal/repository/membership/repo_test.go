@@ -24,6 +24,10 @@ func NewTestClock(currentTime time.Time) *mockClock {
 	}
 }
 
+type mockRand struct{}
+
+func (m *mockRand) Next() int { return 1 }
+
 func (tc *mockClock) Now() time.Time {
 	return tc.currentTime
 }
@@ -46,7 +50,7 @@ func TestUpdateUserSegments(t *testing.T) {
 
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock)
+	repo := New(mockClient, clock, &mockRand{})
 
 	userID := int64(1)
 	insertID1, insertID2, deleteID1, deleteID2 := int64(1), int64(2), int64(3), int64(4)
@@ -349,7 +353,7 @@ func TestGetUserSegments(t *testing.T) {
 	defer mockClient.Close()
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock)
+	repo := New(mockClient, clock, &mockRand{})
 
 	userID := int64(1)
 
@@ -426,7 +430,7 @@ func TestDeleteSegment(t *testing.T) {
 
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock)
+	repo := New(mockClient, clock, &mockRand{})
 
 	userID1, userID2 := int64(1), int64(2)
 	deleteID1 := int64(1)
@@ -722,7 +726,7 @@ func TestCreateUser(t *testing.T) {
 
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock)
+	repo := New(mockClient, clock, &mockRand{})
 
 	userID := int64(1)
 	percentage := 1
@@ -922,7 +926,7 @@ func TestDeleteExpired(t *testing.T) {
 	defer mockClient.Close()
 	testTime := time.Date(2023, 8, 25, 12, 0, 0, 0, time.UTC)
 	clock := NewTestClock(testTime)
-	repo := New(mockClient, clock)
+	repo := New(mockClient, clock, &mockRand{})
 
 	userID1 := int64(1)
 	userID2 := int64(1)

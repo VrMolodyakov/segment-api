@@ -13,6 +13,7 @@ import (
 	"github.com/VrMolodyakov/segment-api/internal/domain/user"
 	psql "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
 	"github.com/VrMolodyakov/segment-api/pkg/clock"
+	"github.com/VrMolodyakov/segment-api/pkg/random"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -27,16 +28,18 @@ const (
 )
 
 type repo struct {
-	client  psql.Client
-	builder sq.StatementBuilderType
-	clock   clock.Clock
+	client    psql.Client
+	builder   sq.StatementBuilderType
+	clock     clock.Clock
+	generator random.Rand
 }
 
-func New(client psql.Client, clock clock.Clock) *repo {
+func New(client psql.Client, clock clock.Clock, generator random.Rand) *repo {
 	return &repo{
-		client:  client,
-		clock:   clock,
-		builder: sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
+		client:    client,
+		clock:     clock,
+		generator: generator,
+		builder:   sq.StatementBuilder.PlaceholderFormat(sq.Dollar),
 	}
 }
 
@@ -171,8 +174,7 @@ func (r *repo) CreateUser(ctx context.Context, user user.User) (int64, error) {
 		return 0, err
 	}
 
-	percentage := int(userID % 100)
-	segments, err := r.hitPercentage(ctx, tx, percentage)
+	segments, err := r.hitPercentage(ctx, tx, r.generator.Next())
 	if err != nil {
 		return 0, err
 	}
