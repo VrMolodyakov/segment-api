@@ -27,12 +27,16 @@ type CreateUserResponse struct {
 type UpdateUserRequest struct {
 	UserID int64           `json:"userID" validate:"required,gt=0"`
 	Update []UpdateSegment `json:"update" validate:"dive"`
-	Delete []string        `json:"delete"`
+	Delete []DeleteSegment `json:"delete"`
 }
 
 type UpdateSegment struct {
 	Name string `json:"name" validate:"required,min=6"`
 	TTL  int    `json:"ttl"`
+}
+
+type DeleteSegment struct {
+	Name string `json:"name"`
 }
 
 type DeleteSegmentRequest struct {
@@ -74,7 +78,7 @@ func NewUserResponseInfo(id int64, segment string, expiredAt time.Time) UserResp
 	}
 }
 
-func (u *UpdateUserRequest) GetUpdatedSegments() []segment.Segment {
+func (u UpdateUserRequest) GetUpdatedSegments() []segment.Segment {
 	segments := make([]segment.Segment, len(u.Update))
 	for i := range segments {
 		segments[i] = u.Update[i].ToModel()
@@ -82,8 +86,12 @@ func (u *UpdateUserRequest) GetUpdatedSegments() []segment.Segment {
 	return segments
 }
 
-func (u *UpdateUserRequest) GetDeletedSegments() []string {
-	return u.Delete
+func (u UpdateUserRequest) GetDeletedSegments() []string {
+	delete := make([]string, len(u.Delete))
+	for i := range delete {
+		delete[i] = u.Delete[i].Name
+	}
+	return delete
 }
 
 func (c CreateUserRequest) ToModel() user.User {

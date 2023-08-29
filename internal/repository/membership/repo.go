@@ -458,7 +458,6 @@ func (r *repo) getDeleteID(ctx context.Context, tx pgx.Tx, name string) (int64, 
 	}
 	var segmentID int64
 	err = tx.QueryRow(ctx, sql, args...).Scan(&segmentID)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, segment.ErrSegmentNotFound
@@ -526,11 +525,7 @@ func (r *repo) deleteUserSegments(ctx context.Context, tx pgx.Tx, userID int64, 
 	}
 
 	if rows.RowsAffected() != int64(len(segmentIDs)) {
-		return fmt.Errorf(
-			"couldn't delete all the necessary rows, want %d , got %d",
-			len(segmentIDs),
-			rows.RowsAffected(),
-		)
+		return membership.ErrSegmentNotAssigned
 	}
 
 	return nil

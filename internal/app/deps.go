@@ -91,7 +91,7 @@ func (d *Deps) Setup(ctx context.Context, cfg *config.Config, logger logging.Log
 	writer := csv.NewCSVWriter[historyDomain.History](f)
 
 	d.cleaner = cleaner.New(membershipRepo, logger)
-	d.server = apiserver.New(cfg.HTTP, segmentService, historyService, membershipService, pool, &writer)
+	d.server = apiserver.New(cfg.HTTP, cfg.Download, segmentService, historyService, membershipService, pool, &writer)
 
 	return nil
 }

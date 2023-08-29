@@ -14,8 +14,9 @@ const (
 type Operation string
 
 var (
-	Deleted = Operation("deleted")
-	Added   = Operation("added")
+	Deleted     = Operation("deleted")
+	Added       = Operation("added")
+	location, _ = time.LoadLocation("Europe/Moscow")
 )
 
 type History struct {
@@ -54,11 +55,10 @@ func (d Date) Validate() error {
 
 func (h History) Row() []string {
 	return []string{
-		strconv.FormatInt(h.ID, 10),
 		strconv.FormatInt(h.UserID, 10),
 		h.Segment,
 		string(h.Operation),
-		h.Time.Format(timeFormat),
+		h.Time.In(location).Format(timeFormat),
 	}
 }
 

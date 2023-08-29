@@ -15,6 +15,7 @@ import (
 
 func New(
 	cfg config.HTTP,
+	download config.Download,
 	segmentService segment.SegmentService,
 	historyService history.HistoryService,
 	membershipService membership.MembershipService,
@@ -23,7 +24,7 @@ func New(
 ) *http.Server {
 
 	segmentHandler := segment.New(segmentService)
-	historyHandler := history.New(historyService, history.NewLinkParam(cfg.Host, cfg.Port), pool, writer)
+	historyHandler := history.New(historyService, history.NewLinkParam(download.Host, download.Port), pool, writer)
 	membershipHandler := membership.New(membershipService)
 
 	router := chi.NewRouter()
@@ -31,7 +32,7 @@ func New(
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 
-	router.Route("/api", func(r chi.Router) {
+	router.Route("/api/v1", func(r chi.Router) {
 		r.Route("/segments", func(r chi.Router) {
 			r.Post("/", segmentHandler.CreateSegment)
 			r.Route("/{segmentName}", func(r chi.Router) {
@@ -52,7 +53,7 @@ func New(
 
 		r.Route("/history", func(r chi.Router) {
 			r.Post("/link", historyHandler.CreateLink)
-			r.Route("/{year}", func(r chi.Router) {
+			r.Route("/download/{year}", func(r chi.Router) {
 				r.Route("/{month}", func(r chi.Router) {
 					r.Get("/", historyHandler.DownloadCSVData)
 				})

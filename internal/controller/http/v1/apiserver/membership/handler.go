@@ -109,6 +109,9 @@ func (h *handler) UpdateUserMembership(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, membership.ErrIncorrectData):
 			http.Error(w, "Attempt to add and remove the same segment", http.StatusBadRequest)
 			return
+		case errors.Is(err, membership.ErrSegmentNotAssigned):
+			http.Error(w, "Attempt to delete a segment unassigned to the user", http.StatusBadRequest)
+			return
 
 		}
 		http.Error(w, "Update user segments", http.StatusInternalServerError)
@@ -141,13 +144,18 @@ func (h *handler) GetUserMembership(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid year parameter", http.StatusBadRequest)
+		http.Error(w, "Invalid user id parameter", http.StatusBadRequest)
 		return
 	}
 
 	data, err := h.membership.GetUserMembership(r.Context(), userID)
 	if err != nil {
 		http.Error(w, "Get user membership segment", http.StatusInternalServerError)
+		return
+	}
+
+	if len(data) == 0 {
+		http.Error(w, "No data was found for the specified user", http.StatusNotFound)
 		return
 	}
 

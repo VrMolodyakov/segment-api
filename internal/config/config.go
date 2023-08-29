@@ -26,6 +26,11 @@ type HTTP struct {
 	WriteTimeout int    `env:"HTTP_WRITE_TIMEOUT"`
 }
 
+type Download struct {
+	Host string `env:"HISTORY_DOWNLOAD_HOST"`
+	Port int    `env:"HISTORY_DOWNLOAD_PORT"`
+}
+
 type Postgres struct {
 	User     string `env:"POSTGRES_USER"`
 	Password string `env:"POSTGRES_PASSWORD"`
@@ -41,6 +46,7 @@ type Cleaner struct {
 }
 
 type Config struct {
+	Download Download
 	Cleaner  Cleaner
 	Cachce   Cachce
 	Logger   Logger

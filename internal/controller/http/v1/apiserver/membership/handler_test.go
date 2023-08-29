@@ -100,7 +100,7 @@ func TestCreateUser(t *testing.T) {
 				mockService.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, user.ErrInvalidEmail)
 			},
 			expectedResponse: func() string {
-				return "Invalid email: email validation error.include at least 1 symbol before @ and 2 symbols after\n"
+				return "Invalid email: email validation error.include at least 1 symbol before @ and 2 symbols after and dot (example@example.com)\n"
 			},
 			args: args{
 				CreateUserRequest{FirstName: "Bob", LastName: "Bob", Email: "email@email.com"},
@@ -182,7 +182,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				UpdateUserRequest{
 					UserID: userID,
 					Update: []UpdateSegment{{"segment-1", 10}, {"segment-2", 20}},
-					Delete: []string{"segment-3", "segment-4"},
+					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
 			exoectedCode: 200,
@@ -212,7 +212,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				UpdateUserRequest{
 					UserID: int64(-1),
 					Update: []UpdateSegment{{"s", 10}, {"segment-2", 20}},
-					Delete: []string{"segment-3", "segment-4"},
+					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
 			exoectedCode: 400,
@@ -231,7 +231,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				UpdateUserRequest{
 					UserID: userID,
 					Update: []UpdateSegment{{"segment-1", 10}, {"segment-2", 20}},
-					Delete: []string{"segment-3", "segment-4"},
+					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
 			exoectedCode: 400,
@@ -250,7 +250,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				UpdateUserRequest{
 					UserID: userID,
 					Update: []UpdateSegment{{"segment-1", 10}, {"segment-2", 20}},
-					Delete: []string{"segment-3", "segment-4"},
+					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
 			exoectedCode: 400,
@@ -269,7 +269,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				UpdateUserRequest{
 					UserID: userID,
 					Update: []UpdateSegment{{"segment-1", 10}, {"segment-2", 20}},
-					Delete: []string{"segment-3", "segment-4"},
+					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
 			exoectedCode: 400,
@@ -288,7 +288,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				UpdateUserRequest{
 					UserID: userID,
 					Update: []UpdateSegment{},
-					Delete: []string{},
+					Delete: []DeleteSegment{},
 				},
 			},
 			exoectedCode: 400,
@@ -307,7 +307,26 @@ func TestUpdateUserSegments(t *testing.T) {
 				UpdateUserRequest{
 					UserID: userID,
 					Update: []UpdateSegment{{"segment-1", 10}, {"segment-2", 20}},
-					Delete: []string{"segment-3", "segment-4"},
+					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
+				},
+			},
+			exoectedCode: 400,
+		},
+		{
+			title: "Attempty to delete unassigned segment",
+			mockCall: func() {
+				mockService.EXPECT().UpdateUserMembership(
+					gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(membership.ErrSegmentNotAssigned)
+			},
+			expectedResponse: func() string {
+				return "Attempt to delete a segment unassigned to the user\n"
+			},
+			args: args{
+				UpdateUserRequest{
+					UserID: userID,
+					Update: []UpdateSegment{{"segment-1", 10}, {"segment-2", 20}},
+					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
 			exoectedCode: 400,
@@ -326,7 +345,7 @@ func TestUpdateUserSegments(t *testing.T) {
 				UpdateUserRequest{
 					UserID: userID,
 					Update: []UpdateSegment{{"segment-4", 10}, {"segment-2", 20}},
-					Delete: []string{"segment-3", "segment-4"},
+					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
 			exoectedCode: 500,
@@ -451,10 +470,11 @@ func TestGetUserMembership(t *testing.T) {
 				},
 			},
 			expectedResponse: func() string {
-				response := GetUserMembershipResponse{
-					Memberships: []UserResponseInfo{{UserID: 1, SegmentName: "seg-1"}, {UserID: 2, SegmentName: "seg-2"}},
+				data := make([]UserResponseInfo, len(info))
+				for i := range data {
+					data[i] = NewUserResponseInfo(info[i].UserID, info[i].SegmentName, info[i].ExpiredAt)
 				}
-				expectedJSON, err := json.Marshal(response)
+				expectedJSON, err := json.Marshal(NewUserMembershipResponse(data))
 				assert.NoError(t, err)
 				return string(expectedJSON)
 
@@ -471,10 +491,26 @@ func TestGetUserMembership(t *testing.T) {
 				},
 			},
 			expectedResponse: func() string {
-				return "Invalid year parameter\n"
+				return "Invalid user id parameter\n"
 
 			},
 			exoectedCode: 400,
+		},
+		{
+			title: "Data not found",
+			mockCall: func() {
+				mockService.EXPECT().GetUserMembership(gomock.Any(), gomock.Any()).Return([]membership.MembershipInfo{}, nil)
+			},
+			args: args{
+				param: map[string]string{
+					"userID": "1",
+				},
+			},
+			expectedResponse: func() string {
+				return "No data was found for the specified user\n"
+
+			},
+			exoectedCode: 404,
 		},
 		{
 			title: "Service error",

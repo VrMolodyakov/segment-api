@@ -14,6 +14,7 @@ import (
 
 var (
 	ErrSegmentAlreadyAssigned = errors.New("segment already assigned")
+	ErrSegmentNotAssigned     = errors.New("segment not assigned")
 	ErrSegmentNotExists       = errors.New("not all segments were found")
 	ErrEmptyData              = errors.New("data for updating and for deletion were not provided")
 	ErrIncorrectData          = errors.New("attempt to add and remove the same segment")
