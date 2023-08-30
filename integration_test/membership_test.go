@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
 	membrDto "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/membership"
 	"github.com/VrMolodyakov/segment-api/internal/domain/history"
 )
@@ -36,8 +37,10 @@ func (s *TestSuite) TestUserNotFound() {
 	s.Require().NoError(err)
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
+	var got api.ErrorResponse
+	json.Unmarshal(bodyBytes, &got)
 	s.Require().NoError(err)
-	s.Require().Equal("No data was found for the specified user\n", string(bodyBytes))
+	s.Require().Equal("No data was found for the specified user", got.Error())
 	s.Require().Equal(404, resp.StatusCode)
 }
 
@@ -53,8 +56,6 @@ func (s *TestSuite) TestUpdateUserSegmentsAddNew() {
 	resp, err := s.server.Client().Post(s.server.URL+"/api/v1/membership/update", "", bytes.NewBufferString(requestBody))
 	s.Require().NoError(err)
 	defer resp.Body.Close()
-	bodyBytes, err := io.ReadAll(resp.Body)
-	fmt.Println(string(bodyBytes))
 	s.Require().NoError(err)
 	s.Require().Equal(200, resp.StatusCode)
 }

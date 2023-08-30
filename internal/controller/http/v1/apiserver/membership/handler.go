@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	"github.com/VrMolodyakov/segment-api/internal/domain/membership"
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
@@ -35,14 +36,16 @@ func New(membership MembershipService) *handler {
 func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var userReq CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&userReq); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %s", err.Error()), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, fmt.Sprintf("invalid request: %s", err.Error()))
 		return
 	}
 
 	errs := validator.Validate(userReq)
 	if errs != nil {
 		jsonErr, _ := json.Marshal(errs)
-		http.Error(w, string(jsonErr), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, string(jsonErr))
 		return
 	}
 
@@ -51,19 +54,23 @@ func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, user.ErrInvalidEmail):
-			http.Error(w, fmt.Sprintf("Invalid email: %s", err.Error()), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, fmt.Sprintf("Invalid email: %s", err.Error()))
 			return
 		case errors.Is(err, user.ErrUserAlreadyExist):
-			http.Error(w, "User already exists", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, "User already exists")
 			return
 		}
-		http.Error(w, "Create user error", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, "Create user error")
 		return
 	}
 
 	jsonResponse, err := json.Marshal(NewCreateUserResponse(id, newUser.FirstName, newUser.LastName, newUser.Email))
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -74,14 +81,16 @@ func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (h *handler) UpdateUserMembership(w http.ResponseWriter, r *http.Request) {
 	var updateReq UpdateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&updateReq); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid request: %s", err.Error()), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, fmt.Sprintf("Invalid request: %s", err.Error()))
 		return
 	}
 
 	errs := validator.Validate(updateReq)
 	if errs != nil {
 		jsonErr, _ := json.Marshal(errs)
-		http.Error(w, string(jsonErr), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, string(jsonErr))
 		return
 	}
 
@@ -95,26 +104,33 @@ func (h *handler) UpdateUserMembership(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, segment.ErrSegmentNotFound):
-			http.Error(w, "Not all segments with the specified names were found", http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
+			api.WriteErrorMessage(w, "Not all segments with the specified names were found")
 			return
 		case errors.Is(err, membership.ErrSegmentAlreadyAssigned):
-			http.Error(w, "Attempt to add segments that the user already belongs to", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, "Attempt to add segments that the user already belongs to")
 			return
 		case errors.Is(err, user.ErrUserNotFound):
-			http.Error(w, "Attempt to update the data of a non-existent user", http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
+			api.WriteErrorMessage(w, "Attempt to update the data of a non-existent user")
 			return
 		case errors.Is(err, membership.ErrEmptyData):
-			http.Error(w, "Data for update and delete cannot be empty at the same time", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, "Data for update and delete cannot be empty at the same time")
 			return
 		case errors.Is(err, membership.ErrIncorrectData):
-			http.Error(w, "Attempt to add and remove the same segment", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, "Attempt to add and remove the same segment")
 			return
 		case errors.Is(err, membership.ErrSegmentNotAssigned):
-			http.Error(w, "Attempt to delete a segment unassigned to the user", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, "Attempt to delete a segment unassigned to the user")
 			return
-
 		}
-		http.Error(w, "Update user segments", http.StatusInternalServerError)
+
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, "Update user segments")
 		return
 	}
 
@@ -128,10 +144,12 @@ func (h *handler) DeleteMembership(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, segment.ErrSegmentNotFound):
-			http.Error(w, "Segment with the specified name wasn't found", http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
+			api.WriteErrorMessage(w, "Segment with the specified name wasn't found")
 			return
 		}
-		http.Error(w, "Delete segment", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, "Delete segment")
 		return
 	}
 
@@ -144,18 +162,21 @@ func (h *handler) GetUserMembership(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid user id parameter", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, "Invalid user id parameter")
 		return
 	}
 
 	data, err := h.membership.GetUserMembership(r.Context(), userID)
 	if err != nil {
-		http.Error(w, "Get user membership segment", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, "Get user membership segment")
 		return
 	}
 
 	if len(data) == 0 {
-		http.Error(w, "No data was found for the specified user", http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
+		api.WriteErrorMessage(w, "No data was found for the specified user")
 		return
 	}
 
@@ -166,7 +187,8 @@ func (h *handler) GetUserMembership(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse, err := json.Marshal(NewUserMembershipResponse(response))
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

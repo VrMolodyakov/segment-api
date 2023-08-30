@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 
+	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	"github.com/VrMolodyakov/segment-api/internal/domain/history"
 	"github.com/go-chi/chi/v5"
@@ -60,14 +61,16 @@ func New(history HistoryService, parameters LinkParam, pool BufferPool, writer C
 func (h *handler) CreateLink(w http.ResponseWriter, r *http.Request) {
 	var linkRequest CreateLinkRequest
 	if err := json.NewDecoder(r.Body).Decode(&linkRequest); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request: %s", err.Error()), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, fmt.Sprintf("invalid request: %s", err.Error()))
 		return
 	}
 
 	errs := validator.Validate(linkRequest)
 	if errs != nil {
 		jsonErr, _ := json.Marshal(errs)
-		http.Error(w, string(jsonErr), http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, string(jsonErr))
 		return
 	}
 
@@ -75,13 +78,16 @@ func (h *handler) CreateLink(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, history.ErrIncorrectYear):
-			http.Error(w, fmt.Sprintf("Incorrect date, %s", err.Error()), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, fmt.Sprintf("Incorrect date, %s", err.Error()))
 			return
 		case errors.Is(err, history.ErrIncorrectMonth):
-			http.Error(w, fmt.Sprintf("Incorrect date, %s", err.Error()), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, fmt.Sprintf("Incorrect date, %s", err.Error()))
 			return
 		}
-		http.Error(w, "Couldn't prepare history data", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, "Couldn't prepare history data")
 		return
 	}
 
@@ -95,9 +101,11 @@ func (h *handler) CreateLink(w http.ResponseWriter, r *http.Request) {
 
 	jsonResponse, err := json.Marshal(NewCreateLinkResponse(link))
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, http.StatusText(http.StatusInternalServerError))
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
@@ -110,13 +118,15 @@ func (h *handler) DownloadCSVData(w http.ResponseWriter, r *http.Request) {
 
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
-		http.Error(w, "Invalid year parameter", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, "Invalid year parameter")
 		return
 	}
 
 	month, err := strconv.Atoi(monthStr)
 	if err != nil {
-		http.Error(w, "Invalid month parameter", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		api.WriteErrorMessage(w, "Invalid month parameter")
 		return
 	}
 
@@ -125,26 +135,31 @@ func (h *handler) DownloadCSVData(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, history.ErrIncorrectYear):
-			http.Error(w, fmt.Sprintf("Incorrect date, %s", err.Error()), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, fmt.Sprintf("Incorrect date, %s", err.Error()))
 			return
 		case errors.Is(err, history.ErrIncorrectMonth):
-			http.Error(w, fmt.Sprintf("Incorrect date, %s", err.Error()), http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			api.WriteErrorMessage(w, fmt.Sprintf("Incorrect date, %s", err.Error()))
 			return
 		case errors.Is(err, history.ErrExpiredData):
-			http.Error(w, "Data lifetime for the link has expired, create a new one", http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
+			api.WriteErrorMessage(w, "Data lifetime for the link has expired, create a new one")
 			return
 		}
 	}
 
 	if len(data) == 0 {
 		w.WriteHeader(http.StatusNoContent)
+		return
 	}
 
 	buffer := h.pool.Get()
 	defer h.pool.Release(buffer)
 
 	if err := h.writer.Write(buffer, data); err != nil {
-		http.Error(w, fmt.Sprintf("Couldn't create a csv file, %s", err.Error()), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, fmt.Sprintf("Couldn't create a csv file, %s", err.Error()))
 		return
 	}
 
@@ -152,7 +167,8 @@ func (h *handler) DownloadCSVData(w http.ResponseWriter, r *http.Request) {
 
 	_, err = io.Copy(w, buffer)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Internal Server Error: %v", err), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		api.WriteErrorMessage(w, fmt.Sprintf("Internal Server Error: %v", err))
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/segment/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	segmentService "github.com/VrMolodyakov/segment-api/internal/domain/segment"
@@ -85,7 +86,9 @@ func TestCreateSegment(t *testing.T) {
 			expectedResponse: func() string {
 				expectedJSON, err := json.Marshal([]validator.ValidateError{validateError})
 				assert.NoError(t, err)
-				return string(expectedJSON) + "\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: string(expectedJSON)})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			exoectedCode: 400,
 		},
@@ -101,7 +104,9 @@ func TestCreateSegment(t *testing.T) {
 				req: segmentReq,
 			},
 			expectedResponse: func() string {
-				return "Segment already exists\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Segment already exists"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			exoectedCode: 400,
 		},
@@ -117,7 +122,9 @@ func TestCreateSegment(t *testing.T) {
 				req: segmentReq,
 			},
 			expectedResponse: func() string {
-				return "Create segment error\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Create segment error"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			exoectedCode: 500,
 		},

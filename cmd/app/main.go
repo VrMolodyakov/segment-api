@@ -6,13 +6,17 @@ import (
 	"os"
 
 	"github.com/VrMolodyakov/segment-api/internal/app"
-	_ "github.com/VrMolodyakov/segment-api/internal/domain/segment"
-	_ "github.com/VrMolodyakov/segment-api/internal/domain/user"
-	_ "github.com/VrMolodyakov/segment-api/internal/repository/history"
-	_ "github.com/VrMolodyakov/segment-api/internal/repository/user"
-	_ "github.com/VrMolodyakov/segment-api/pkg/client/postgresql"
-	_ "github.com/VrMolodyakov/segment-api/pkg/clock"
 )
+
+//  @title          Segment api
+//  @version        1.0
+//  @description    Api for working with segments
+
+//  @contact.name   Vyacheslav Molodyakov
+//  @contact.email  vrmolodyakov@mail.ru
+
+//  @host       localhost:8080
+//  @basePath   /api/v1
 
 func main() {
 	ctx := context.Background()

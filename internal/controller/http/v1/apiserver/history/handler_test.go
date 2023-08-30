@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/history/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	"github.com/VrMolodyakov/segment-api/internal/domain/history"
@@ -95,7 +96,9 @@ func TestCreateLink(t *testing.T) {
 				}
 				expectedJSON, err := json.Marshal([]validator.ValidateError{v})
 				assert.NoError(t, err)
-				return string(expectedJSON) + "\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: string(expectedJSON)})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				req: CreateLinkRequest{
@@ -117,7 +120,9 @@ func TestCreateLink(t *testing.T) {
 				}
 				expectedJSON, err := json.Marshal([]validator.ValidateError{v})
 				assert.NoError(t, err)
-				return string(expectedJSON) + "\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: string(expectedJSON)})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				req: CreateLinkRequest{
@@ -133,7 +138,9 @@ func TestCreateLink(t *testing.T) {
 				mockService.EXPECT().PrepareHistoryData(gomock.Any(), gomock.Any()).Return(history.ErrIncorrectYear)
 			},
 			expectedResponse: func() string {
-				return "Incorrect date, history for dates before 2007 year is not available\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Incorrect date, history for dates before 2007 year is not available"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				req: CreateLinkRequest{Year: 1994, Month: 1},
@@ -146,7 +153,9 @@ func TestCreateLink(t *testing.T) {
 				mockService.EXPECT().PrepareHistoryData(gomock.Any(), gomock.Any()).Return(history.ErrIncorrectMonth)
 			},
 			expectedResponse: func() string {
-				return "Incorrect date, impossible to get information for a month that has not yet come\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Incorrect date, impossible to get information for a month that has not yet come"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				req: CreateLinkRequest{Year: 1994, Month: 1},
@@ -159,7 +168,9 @@ func TestCreateLink(t *testing.T) {
 				mockService.EXPECT().PrepareHistoryData(gomock.Any(), gomock.Any()).Return(errors.New("service error"))
 			},
 			expectedResponse: func() string {
-				return "Couldn't prepare history data\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Couldn't prepare history data"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				req: CreateLinkRequest{Year: 2023, Month: 8},
@@ -254,7 +265,9 @@ func TestDownloadCSVData(t *testing.T) {
 			mockCall: func() {
 			},
 			expectedResponse: func() string {
-				return "Invalid year parameter\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Invalid year parameter"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				reqParam: map[string]string{
@@ -269,7 +282,9 @@ func TestDownloadCSVData(t *testing.T) {
 			mockCall: func() {
 			},
 			expectedResponse: func() string {
-				return "Invalid month parameter\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Invalid month parameter"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				reqParam: map[string]string{
@@ -285,7 +300,9 @@ func TestDownloadCSVData(t *testing.T) {
 				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return(nil, history.ErrIncorrectYear)
 			},
 			expectedResponse: func() string {
-				return "Incorrect date, history for dates before 2007 year is not available\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Incorrect date, history for dates before 2007 year is not available"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				reqParam: map[string]string{
@@ -301,7 +318,9 @@ func TestDownloadCSVData(t *testing.T) {
 				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return(nil, history.ErrIncorrectMonth)
 			},
 			expectedResponse: func() string {
-				return "Incorrect date, impossible to get information for a month that has not yet come\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Incorrect date, impossible to get information for a month that has not yet come"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				reqParam: map[string]string{
@@ -317,7 +336,9 @@ func TestDownloadCSVData(t *testing.T) {
 				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return(nil, history.ErrExpiredData)
 			},
 			expectedResponse: func() string {
-				return "Data lifetime for the link has expired, create a new one\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Data lifetime for the link has expired, create a new one"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				reqParam: map[string]string{
@@ -333,7 +354,9 @@ func TestDownloadCSVData(t *testing.T) {
 				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return([]history.History{{Segment: "seg-1"}}, nil)
 			},
 			expectedResponse: func() string {
-				return "Couldn't create a csv file, error\n"
+				resp, err := json.Marshal(api.ErrorResponse{Message: "Couldn't create a csv file, error"})
+				assert.NoError(t, err)
+				return string(resp)
 			},
 			args: args{
 				reqParam: map[string]string{

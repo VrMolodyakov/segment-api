@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
+	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
 	segmentDto "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/segment"
 )
 
@@ -29,7 +30,9 @@ func (s *TestSuite) TestSegmentAlreadyExists() {
 	s.Require().NoError(err)
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
+	var got api.ErrorResponse
+	json.Unmarshal(bodyBytes, &got)
 	s.Require().NoError(err)
-	s.Require().Equal("Segment already exists\n", string(bodyBytes))
+	s.Require().Equal("Segment already exists", got.Error())
 	s.Require().Equal(400, resp.StatusCode)
 }
