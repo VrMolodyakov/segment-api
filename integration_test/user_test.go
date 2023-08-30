@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/apierror"
 	membrDto "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/membership"
 )
 
@@ -30,9 +30,9 @@ func (s *TestSuite) TestUserAlreadyExists() {
 	s.Require().NoError(err)
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
-	var got api.ErrorResponse
+	var got apierror.ErrorResponse
 	json.Unmarshal(bodyBytes, &got)
 	s.Require().NoError(err)
 	s.Require().Equal("User already exists", got.Error())
-	s.Require().Equal(400, resp.StatusCode)
+	s.Require().Equal(409, resp.StatusCode)
 }

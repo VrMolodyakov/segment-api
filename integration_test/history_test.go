@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/apierror"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/history"
 )
 
@@ -31,7 +31,7 @@ func (s *TestSuite) TestCreateLinkWrongYear() {
 	bodyBytes, err := io.ReadAll(resp.Body)
 	s.Require().NoError(err)
 	s.Require().Equal(400, resp.StatusCode)
-	var got api.ErrorResponse
+	var got apierror.ErrorResponse
 	json.Unmarshal(bodyBytes, &got)
 	s.Require().Equal("Incorrect date, history for dates before 2007 year is not available", got.Error())
 }
@@ -44,7 +44,7 @@ func (s *TestSuite) TestCreateLinkWrongMonth() {
 	bodyBytes, err := io.ReadAll(resp.Body)
 	s.Require().NoError(err)
 	s.Require().Equal(400, resp.StatusCode)
-	var got api.ErrorResponse
+	var got apierror.ErrorResponse
 	json.Unmarshal(bodyBytes, &got)
 	s.Require().Equal("Incorrect date, impossible to get information for a month that has not yet come", got.Error())
 }

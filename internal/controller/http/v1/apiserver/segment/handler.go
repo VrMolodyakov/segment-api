@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/apierror"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	"github.com/VrMolodyakov/segment-api/internal/domain/segment"
 )
@@ -37,14 +37,15 @@ func New(segment SegmentService) *handler {
 // @Produce json
 // @Param segmentReq body CreateSegmentRequest true "Segment creation request"
 // @Success 201 {object} CreateSegmentResponse "Segment created successfully"
-// @Failure 400 {string} string "Bad request or validation error"
-// @Failure 500 {string} string "Internal server error"
-// @Router /create-segment [post]
+// @Failure 400 {object} apierror.ErrorResponse
+// @Failure 409 {object} apierror.ErrorResponse
+// @Failure 500 {object} apierror.ErrorResponse
+// @Router /segments [post]
 func (h *handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 	var segmentReq CreateSegmentRequest
 	if err := json.NewDecoder(r.Body).Decode(&segmentReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		api.WriteErrorMessage(w, fmt.Sprintf("invalid request: %s", err.Error()))
+		apierror.WriteErrorMessage(w, fmt.Sprintf("invalid request: %s", err.Error()))
 		return
 	}
 
@@ -52,7 +53,7 @@ func (h *handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 	if errs != nil {
 		jsonErr, _ := json.Marshal(errs)
 		w.WriteHeader(http.StatusBadRequest)
-		api.WriteErrorMessage(w, string(jsonErr))
+		apierror.WriteErrorMessage(w, string(jsonErr))
 		return
 	}
 
@@ -60,19 +61,19 @@ func (h *handler) CreateSegment(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, segment.ErrSegmentAlreadyExists):
-			w.WriteHeader(http.StatusBadRequest)
-			api.WriteErrorMessage(w, "Segment already exists")
+			w.WriteHeader(http.StatusConflict)
+			apierror.WriteErrorMessage(w, "Segment already exists")
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
-		api.WriteErrorMessage(w, "Create segment error")
+		apierror.WriteErrorMessage(w, "Create segment error")
 		return
 	}
 
 	jsonResponse, err := json.Marshal(NewSegmentResponse(id, segmentReq.Name, segmentReq.HitPercentage))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		api.WriteErrorMessage(w, "Internal server error")
+		apierror.WriteErrorMessage(w, "Internal server error")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

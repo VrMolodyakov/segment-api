@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/apierror"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/membership/mocks"
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/validator"
 	"github.com/VrMolodyakov/segment-api/internal/domain/membership"
@@ -88,7 +88,7 @@ func TestCreateUser(t *testing.T) {
 					},
 				})
 				assert.NoError(t, err)
-				resp, err := json.Marshal(api.ErrorResponse{Message: string(expectedJSON)})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: string(expectedJSON)})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -103,7 +103,7 @@ func TestCreateUser(t *testing.T) {
 				mockService.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, user.ErrInvalidEmail)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Invalid email: email validation error.include at least 1 symbol before @ and 2 symbols after and dot (example@example.com)"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Invalid email: email validation error.include at least 1 symbol before @ and 2 symbols after and dot (example@example.com)"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -118,14 +118,14 @@ func TestCreateUser(t *testing.T) {
 				mockService.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, user.ErrUserAlreadyExist)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "User already exists"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "User already exists"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
 			args: args{
 				CreateUserRequest{FirstName: "Bob", LastName: "Bob", Email: "email@email.com"},
 			},
-			exoectedCode: 400,
+			exoectedCode: 409,
 		},
 		{
 			title: "Error while creating new user",
@@ -133,7 +133,7 @@ func TestCreateUser(t *testing.T) {
 				mockService.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Return(emptyID, errors.New("service error"))
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Create user error"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Create user error"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -214,7 +214,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					},
 				})
 				assert.NoError(t, err)
-				resp, err := json.Marshal(api.ErrorResponse{Message: string(expectedJSON)})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: string(expectedJSON)})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -236,7 +236,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Return(membership.ErrSegmentAlreadyAssigned)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Attempt to add segments that the user already belongs to"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Attempt to add segments that the user already belongs to"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -247,7 +247,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
-			exoectedCode: 400,
+			exoectedCode: 409,
 		},
 		{
 			title: "Segment does not exists",
@@ -257,7 +257,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Return(segment.ErrSegmentNotFound)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Not all segments with the specified names were found"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Not all segments with the specified names were found"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -278,7 +278,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Return(user.ErrUserNotFound)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Attempt to update the data of a non-existent user"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Attempt to update the data of a non-existent user"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -299,7 +299,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Return(membership.ErrEmptyData)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Data for update and delete cannot be empty at the same time"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Data for update and delete cannot be empty at the same time"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -320,7 +320,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Return(membership.ErrIncorrectData)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Attempt to add and remove the same segment"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Attempt to add and remove the same segment"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -341,7 +341,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Return(membership.ErrSegmentNotAssigned)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Attempt to delete a segment unassigned to the user"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Attempt to delete a segment unassigned to the user"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -352,7 +352,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
-			exoectedCode: 400,
+			exoectedCode: 409,
 		},
 		{
 			title: "Error while updating user segments",
@@ -362,7 +362,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Return(errors.New("service error"))
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Update user segments"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Update user segments"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -428,7 +428,7 @@ func TestDeleteMembership(t *testing.T) {
 				mockService.EXPECT().DeleteMembership(gomock.Any(), gomock.Any()).Return(segment.ErrSegmentNotFound)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Segment with the specified name wasn't found"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Segment with the specified name wasn't found"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -443,7 +443,7 @@ func TestDeleteMembership(t *testing.T) {
 				mockService.EXPECT().DeleteMembership(gomock.Any(), gomock.Any()).Return(errors.New("service error"))
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Delete segment"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Delete segment"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
@@ -520,7 +520,7 @@ func TestGetUserMembership(t *testing.T) {
 				},
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Invalid user id parameter"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Invalid user id parameter"})
 				assert.NoError(t, err)
 				return string(resp)
 
@@ -538,7 +538,7 @@ func TestGetUserMembership(t *testing.T) {
 				},
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "No data was found for the specified user"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "No data was found for the specified user"})
 				assert.NoError(t, err)
 				return string(resp)
 
@@ -556,7 +556,7 @@ func TestGetUserMembership(t *testing.T) {
 				},
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(api.ErrorResponse{Message: "Get user membership segment"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Get user membership segment"})
 				assert.NoError(t, err)
 				return string(resp)
 			},

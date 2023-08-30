@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	api "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/errors"
+	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/apierror"
 	membrDto "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/membership"
 	"github.com/VrMolodyakov/segment-api/internal/domain/history"
 )
@@ -37,7 +37,7 @@ func (s *TestSuite) TestUserNotFound() {
 	s.Require().NoError(err)
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
-	var got api.ErrorResponse
+	var got apierror.ErrorResponse
 	json.Unmarshal(bodyBytes, &got)
 	s.Require().NoError(err)
 	s.Require().Equal("No data was found for the specified user", got.Error())
@@ -102,7 +102,7 @@ func (s *TestSuite) TestUpdateUserSegmentsAssignedSegment() {
 	s.Require().NoError(err)
 	defer resp.Body.Close()
 	s.Require().NoError(err)
-	s.Require().Equal(400, resp.StatusCode)
+	s.Require().Equal(409, resp.StatusCode)
 }
 
 func (s *TestSuite) TestUpdateUserSegmentsEmptyReq() {
@@ -129,7 +129,7 @@ func (s *TestSuite) TestUpdateUserSegmentsDeleteNotAssigned() {
 	s.Require().NoError(err)
 	defer resp.Body.Close()
 	s.Require().NoError(err)
-	s.Require().Equal(400, resp.StatusCode)
+	s.Require().Equal(409, resp.StatusCode)
 }
 
 func (s *TestSuite) TestSuccessfullyDeleteSegment() {

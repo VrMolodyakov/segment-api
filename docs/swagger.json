@@ -1,0 +1,548 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Api for working with segments",
+        "title": "Segment api",
+        "contact": {
+            "name": "Vyacheslav Molodyakov",
+            "email": "vrmolodyakov@mail.ru"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/history/download/{year}/{month}": {
+            "get": {
+                "description": "Download history",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/csv"
+                ],
+                "tags": [
+                    "History"
+                ],
+                "summary": "Download history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Year",
+                        "name": "year",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Month",
+                        "name": "month",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/history/link": {
+            "post": {
+                "description": "Create new download link",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "History"
+                ],
+                "summary": "Create new download link",
+                "parameters": [
+                    {
+                        "description": "Creaet link request",
+                        "name": "linkRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/history.CreateLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Create link successfully",
+                        "schema": {
+                            "$ref": "#/definitions/history.CreateLinkResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/membership/update": {
+            "post": {
+                "description": "Update user segments",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Membership"
+                ],
+                "summary": "Update user segments",
+                "parameters": [
+                    {
+                        "description": "Update request",
+                        "name": "updateReq",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/membership.UpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/segments": {
+            "post": {
+                "description": "Creates a new segment with the provided details.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Segments"
+                ],
+                "summary": "Create a new segment",
+                "parameters": [
+                    {
+                        "description": "Segment creation request",
+                        "name": "segmentReq",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/segment.CreateSegmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Segment created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/segment.CreateSegmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/segments/{segmentName}": {
+            "delete": {
+                "description": "Delete segment",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Segments"
+                ],
+                "summary": "Delete segment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Segment name",
+                        "name": "segmentName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "post": {
+                "description": "Create user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Create new user",
+                "parameters": [
+                    {
+                        "description": "Create user request",
+                        "name": "userReq",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/membership.CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Create user response",
+                        "schema": {
+                            "$ref": "#/definitions/membership.CreateUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userID}": {
+            "get": {
+                "description": "Get user segments",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get user segments",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User id",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User segment info",
+                        "schema": {
+                            "$ref": "#/definitions/membership.GetUserMembershipResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apierror.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "apierror.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "ok": {
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        },
+        "history.CreateLinkRequest": {
+            "type": "object",
+            "required": [
+                "month",
+                "year"
+            ],
+            "properties": {
+                "month": {
+                    "type": "integer"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "history.CreateLinkResponse": {
+            "type": "object",
+            "properties": {
+                "string": {
+                    "type": "string"
+                }
+            }
+        },
+        "membership.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "firsName",
+                "lastName"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "minLength": 5
+                },
+                "firsName": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "lastName": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "membership.CreateUserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firsName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "membership.DeleteSegment": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "membership.GetUserMembershipResponse": {
+            "type": "object",
+            "properties": {
+                "memberships": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/membership.UserResponseInfo"
+                    }
+                }
+            }
+        },
+        "membership.UpdateSegment": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "ttl": {
+                    "type": "integer"
+                }
+            }
+        },
+        "membership.UpdateUserRequest": {
+            "type": "object",
+            "required": [
+                "userID"
+            ],
+            "properties": {
+                "delete": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/membership.DeleteSegment"
+                    }
+                },
+                "update": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/membership.UpdateSegment"
+                    }
+                },
+                "userID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "membership.UserResponseInfo": {
+            "type": "object",
+            "properties": {
+                "expiredAt": {
+                    "type": "string"
+                },
+                "segmentName": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "segment.CreateSegmentRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "hitPercentage": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 6
+                }
+            }
+        },
+        "segment.CreateSegmentResponse": {
+            "type": "object",
+            "properties": {
+                "hitPercentage": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "segmentID": {
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

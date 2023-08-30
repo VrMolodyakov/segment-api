@@ -1,0 +1,361 @@
+basePath: /api/v1
+definitions:
+  apierror.ErrorResponse:
+    properties:
+      message:
+        type: string
+      ok:
+        default: false
+        type: boolean
+    type: object
+  history.CreateLinkRequest:
+    properties:
+      month:
+        type: integer
+      year:
+        type: integer
+    required:
+    - month
+    - year
+    type: object
+  history.CreateLinkResponse:
+    properties:
+      string:
+        type: string
+    type: object
+  membership.CreateUserRequest:
+    properties:
+      email:
+        minLength: 5
+        type: string
+      firsName:
+        minLength: 3
+        type: string
+      lastName:
+        minLength: 3
+        type: string
+    required:
+    - email
+    - firsName
+    - lastName
+    type: object
+  membership.CreateUserResponse:
+    properties:
+      email:
+        type: string
+      firsName:
+        type: string
+      lastName:
+        type: string
+      userID:
+        type: integer
+    type: object
+  membership.DeleteSegment:
+    properties:
+      name:
+        type: string
+    type: object
+  membership.GetUserMembershipResponse:
+    properties:
+      memberships:
+        items:
+          $ref: '#/definitions/membership.UserResponseInfo'
+        type: array
+    type: object
+  membership.UpdateSegment:
+    properties:
+      name:
+        minLength: 6
+        type: string
+      ttl:
+        type: integer
+    required:
+    - name
+    type: object
+  membership.UpdateUserRequest:
+    properties:
+      delete:
+        items:
+          $ref: '#/definitions/membership.DeleteSegment'
+        type: array
+      update:
+        items:
+          $ref: '#/definitions/membership.UpdateSegment'
+        type: array
+      userID:
+        type: integer
+    required:
+    - userID
+    type: object
+  membership.UserResponseInfo:
+    properties:
+      expiredAt:
+        type: string
+      segmentName:
+        type: string
+      userID:
+        type: integer
+    type: object
+  segment.CreateSegmentRequest:
+    properties:
+      hitPercentage:
+        type: integer
+      name:
+        minLength: 6
+        type: string
+    required:
+    - name
+    type: object
+  segment.CreateSegmentResponse:
+    properties:
+      hitPercentage:
+        type: integer
+      name:
+        type: string
+      segmentID:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: vrmolodyakov@mail.ru
+    name: Vyacheslav Molodyakov
+  description: Api for working with segments
+  title: Segment api
+  version: "1.0"
+paths:
+  /history/download/{year}/{month}:
+    get:
+      consumes:
+      - application/json
+      description: Download history
+      parameters:
+      - description: Year
+        in: path
+        name: year
+        required: true
+        type: integer
+      - description: Month
+        in: path
+        name: month
+        required: true
+        type: integer
+      produces:
+      - application/csv
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+      summary: Download history
+      tags:
+      - History
+  /history/link:
+    post:
+      consumes:
+      - application/json
+      description: Create new download link
+      parameters:
+      - description: Creaet link request
+        in: body
+        name: linkRequest
+        required: true
+        schema:
+          $ref: '#/definitions/history.CreateLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Create link successfully
+          schema:
+            $ref: '#/definitions/history.CreateLinkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+      summary: Create new download link
+      tags:
+      - History
+  /membership/update:
+    post:
+      consumes:
+      - application/json
+      description: Update user segments
+      parameters:
+      - description: Update request
+        in: body
+        name: updateReq
+        required: true
+        schema:
+          $ref: '#/definitions/membership.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+      summary: Update user segments
+      tags:
+      - Membership
+  /segments:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new segment with the provided details.
+      parameters:
+      - description: Segment creation request
+        in: body
+        name: segmentReq
+        required: true
+        schema:
+          $ref: '#/definitions/segment.CreateSegmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Segment created successfully
+          schema:
+            $ref: '#/definitions/segment.CreateSegmentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+      summary: Create a new segment
+      tags:
+      - Segments
+  /segments/{segmentName}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete segment
+      parameters:
+      - description: Segment name
+        in: path
+        name: segmentName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+      summary: Delete segment
+      tags:
+      - Segments
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Create user
+      parameters:
+      - description: Create user request
+        in: body
+        name: userReq
+        required: true
+        schema:
+          $ref: '#/definitions/membership.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Create user response
+          schema:
+            $ref: '#/definitions/membership.CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+      summary: Create new user
+      tags:
+      - Users
+  /users/{userID}:
+    get:
+      consumes:
+      - application/json
+      description: Get user segments
+      parameters:
+      - description: User id
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User segment info
+          schema:
+            $ref: '#/definitions/membership.GetUserMembershipResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apierror.ErrorResponse'
+      summary: Get user segments
+      tags:
+      - Users
+swagger: "2.0"

@@ -1,10 +1,13 @@
-package errors
+package apierror
 
 import (
 	"encoding/json"
 	"io"
 )
 
+// ErrorResponse represents an API error response.
+//
+// @name ErrorResponse
 type ErrorResponse struct {
 	Ok      bool   `json:"ok" default:"false"`
 	Message string `json:"message"`
