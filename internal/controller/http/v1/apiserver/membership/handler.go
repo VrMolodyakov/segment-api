@@ -95,13 +95,13 @@ func (h *handler) UpdateUserMembership(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, segment.ErrSegmentNotFound):
-			http.Error(w, "Not all segments with the specified names were found", http.StatusBadRequest)
+			http.Error(w, "Not all segments with the specified names were found", http.StatusNotFound)
 			return
 		case errors.Is(err, membership.ErrSegmentAlreadyAssigned):
 			http.Error(w, "Attempt to add segments that the user already belongs to", http.StatusBadRequest)
 			return
 		case errors.Is(err, user.ErrUserNotFound):
-			http.Error(w, "Attempt to update the data of a non-existent user", http.StatusBadRequest)
+			http.Error(w, "Attempt to update the data of a non-existent user", http.StatusNotFound)
 			return
 		case errors.Is(err, membership.ErrEmptyData):
 			http.Error(w, "Data for update and delete cannot be empty at the same time", http.StatusBadRequest)
@@ -128,7 +128,7 @@ func (h *handler) DeleteMembership(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, segment.ErrSegmentNotFound):
-			http.Error(w, "Segment with the specified name wasn't found", http.StatusBadRequest)
+			http.Error(w, "Segment with the specified name wasn't found", http.StatusNotFound)
 			return
 		}
 		http.Error(w, "Delete segment", http.StatusInternalServerError)

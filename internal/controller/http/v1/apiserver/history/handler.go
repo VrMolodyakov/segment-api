@@ -136,6 +136,10 @@ func (h *handler) DownloadCSVData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if len(data) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+	}
+
 	buffer := h.pool.Get()
 	defer h.pool.Release(buffer)
 

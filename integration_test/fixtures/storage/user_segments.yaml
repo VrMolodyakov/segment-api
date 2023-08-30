@@ -1,0 +1,7 @@
+- user_id: 1
+  segment_id: 1
+  expired_at: 2024-01-31 00:00:00
+
+- user_id: 3
+  segment_id: 3
+  expired_at: 2024-01-31 00:00:00

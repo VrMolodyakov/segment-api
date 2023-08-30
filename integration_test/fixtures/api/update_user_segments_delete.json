@@ -1,0 +1,10 @@
+{
+    "userID": 1,
+    "update": [
+    ],
+    "delete": [
+        {
+            "name": "test_name"
+        }
+    ]
+}

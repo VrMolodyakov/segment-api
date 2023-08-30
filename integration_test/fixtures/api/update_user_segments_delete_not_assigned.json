@@ -1,0 +1,14 @@
+{
+    "userID": 3,
+    "update": [
+        {
+            "name": "test_name_2",
+            "ttl": 3600
+        }
+    ],
+    "delete": [
+        {
+            "name": "test_name_4"
+        }
+    ]
+}

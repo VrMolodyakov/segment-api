@@ -253,7 +253,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
-			exoectedCode: 400,
+			exoectedCode: 404,
 		},
 		{
 			title: "User does not exists",
@@ -272,7 +272,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Delete: []DeleteSegment{{"segment-3"}, {"segment-4"}},
 				},
 			},
-			exoectedCode: 400,
+			exoectedCode: 404,
 		},
 		{
 			title: "Both add and delete array is empty",
@@ -408,7 +408,7 @@ func TestDeleteMembership(t *testing.T) {
 			args: args{
 				map[string]string{"segmentName": "segment-1"},
 			},
-			exoectedCode: 400,
+			exoectedCode: 404,
 		},
 		{
 			title: "Service error",

@@ -1,0 +1,23 @@
+- segment_id: 1
+  automatic_percentage: 0
+  segment_name: test_name
+
+- segment_id: 2
+  automatic_percentage: 0
+  segment_name: test_name_2
+
+- segment_id: 3
+  automatic_percentage: 0
+  segment_name: test_name_3
+
+- segment_id: 4
+  automatic_percentage: 0
+  segment_name: test_name_4
+
+- segment_id: 5
+  automatic_percentage: 0
+  segment_name: test_name_5
+
+- segment_id: 6
+  automatic_percentage: 0
+  segment_name: test_name_6

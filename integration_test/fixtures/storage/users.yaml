@@ -1,0 +1,14 @@
+- user_id: 1
+  first_name: test_name
+  last_name: test_name
+  email: example@example.com
+
+- user_id: 2
+  first_name: test_name
+  last_name: test_name
+  email: example2@example.com
+
+- user_id: 3
+  first_name: test_name
+  last_name: test_name
+  email: example3@example.com

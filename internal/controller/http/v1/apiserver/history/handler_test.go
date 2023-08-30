@@ -65,7 +65,7 @@ func TestCreateLink(t *testing.T) {
 		expectedResponse func() string
 	}{
 		{
-			title: "Should successfully create new segment",
+			title: "Should successfully create new link",
 			mockCall: func() {
 				mockService.EXPECT().PrepareHistoryData(gomock.Any(), gomock.Any()).Return(nil)
 			},
@@ -210,9 +210,9 @@ func TestDownloadCSVData(t *testing.T) {
 		expectedResponse func() string
 	}{
 		{
-			title: "Should successfully create new segment",
+			title: "Should successfully download",
 			mockCall: func() {
-				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return([]history.History{}, nil)
+				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return([]history.History{{Segment: "seg-1"}}, nil)
 			},
 			expectedResponse: func() string {
 				return "hello segment"
@@ -229,6 +229,25 @@ func TestDownloadCSVData(t *testing.T) {
 				return err
 			},
 			exoectedCode: 200,
+		},
+		{
+			title: "No data available",
+			mockCall: func() {
+				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return([]history.History{}, nil)
+			},
+			expectedResponse: func() string {
+				return ""
+			},
+			args: args{
+				reqParam: map[string]string{
+					"year":  "2023",
+					"month": "8",
+				},
+			},
+			writerCallMock: func(w io.Writer, args []history.History) error {
+				return nil
+			},
+			exoectedCode: 204,
 		},
 		{
 			title: "Invalid year URL params",
@@ -311,7 +330,7 @@ func TestDownloadCSVData(t *testing.T) {
 		{
 			title: "Couldn't create csv data",
 			mockCall: func() {
-				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return([]history.History{}, nil)
+				mockService.EXPECT().GetUsersHistory(gomock.Any(), gomock.Any()).Return([]history.History{{Segment: "seg-1"}}, nil)
 			},
 			expectedResponse: func() string {
 				return "Couldn't create a csv file, error\n"
