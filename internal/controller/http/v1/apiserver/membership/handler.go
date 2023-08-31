@@ -128,7 +128,7 @@ func (h *handler) UpdateUserMembership(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, segment.ErrSegmentNotFound):
 			w.WriteHeader(http.StatusNotFound)
-			apierror.WriteErrorMessage(w, "Not all segments with the specified names were found")
+			apierror.WriteErrorMessage(w, "Not all segments with the specified names were found or adding/removing one segment multiple times")
 			return
 		case errors.Is(err, membership.ErrSegmentAlreadyAssigned):
 			w.WriteHeader(http.StatusConflict)

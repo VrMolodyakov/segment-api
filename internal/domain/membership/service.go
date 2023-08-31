@@ -76,7 +76,9 @@ func (s *service) GetUserMembership(ctx context.Context, userID int64) ([]Member
 		s.logger.Errorf("error in getting membership info, %w", err)
 		return nil, err
 	}
-	s.cache.Set(userID, info, s.cacheExpiration)
+	if len(info) > 0 {
+		s.cache.Set(userID, info, s.cacheExpiration)
+	}
 	return info, nil
 }
 

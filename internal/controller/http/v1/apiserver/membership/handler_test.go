@@ -257,7 +257,7 @@ func TestUpdateUserSegments(t *testing.T) {
 					Return(segment.ErrSegmentNotFound)
 			},
 			expectedResponse: func() string {
-				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Not all segments with the specified names were found"})
+				resp, err := json.Marshal(apierror.ErrorResponse{Message: "Not all segments with the specified names were found or adding/removing one segment multiple times"})
 				assert.NoError(t, err)
 				return string(resp)
 			},
