@@ -78,7 +78,7 @@ func TestUpdateUserMembership(t *testing.T) {
 			expectErr: membership.ErrSegmentAlreadyAssigned,
 		},
 		{
-			title: "Segment already assigned error",
+			title: "User not found error",
 			mockCall: func() {
 				mockRepo.EXPECT().UpdateUserSegments(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(user.ErrUserNotFound)
 			},

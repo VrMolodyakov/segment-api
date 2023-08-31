@@ -59,7 +59,11 @@ func New(
 
 func (s *service) DeleteMembership(ctx context.Context, segmentName string) error {
 	s.logger.Debugf("try to delete %s segment", segmentName)
-	return s.membership.DeleteSegment(ctx, segmentName)
+	err := s.membership.DeleteSegment(ctx, segmentName)
+	if err != nil {
+		s.logger.Errorf("cannot delete %s segment due to %s", segmentName, err.Error())
+	}
+	return err
 }
 
 func (s *service) GetUserMembership(ctx context.Context, userID int64) ([]MembershipInfo, error) {
@@ -82,7 +86,11 @@ func (s *service) CreateUser(ctx context.Context, user user.User) (int64, error)
 		s.logger.Errorf("invalid email %s", user.Email)
 		return 0, err
 	}
-	return s.membership.CreateUser(ctx, user, s.generator.Next())
+	id, err := s.membership.CreateUser(ctx, user, s.generator.Next())
+	if err != nil {
+		s.logger.Errorf("error in creating user, %s", err.Error())
+	}
+	return id, err
 }
 
 func (s *service) UpdateUserMembership(
@@ -95,7 +103,11 @@ func (s *service) UpdateUserMembership(
 	if err := validateUpdatedData(addSegments, deleteSegments); err != nil {
 		return err
 	}
-	return s.membership.UpdateUserSegments(ctx, userID, addSegments, deleteSegments)
+	err := s.membership.UpdateUserSegments(ctx, userID, addSegments, deleteSegments)
+	if err != nil {
+		s.logger.Errorf("error in updating user segments, %s", err.Error())
+	}
+	return err
 }
 
 func validateUpdatedData(add []segment.Segment, delete []string) error {

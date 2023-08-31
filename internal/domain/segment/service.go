@@ -38,7 +38,11 @@ func (s *service) CreateSegment(ctx context.Context, name string, percentage int
 		return 0, err
 
 	}
-	return s.segment.Create(ctx, name, percentage)
+	id, err := s.segment.Create(ctx, name, percentage)
+	if err != nil {
+		s.logger.Error("cannot create segment %s", err.Error())
+	}
+	return id, err
 }
 
 func (s *service) GetAllSegments(ctx context.Context) ([]SegmentInfo, error) {
