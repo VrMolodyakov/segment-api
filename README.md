@@ -30,7 +30,8 @@ make stop
 10) `squirrel` - для написания SQL запросов
 
 ## Схема базы данных 
-![image](https://github.com/VrMolodyakov/segment-api/assets/99216816/602f6a51-0c33-430d-8ac6-da87941ea482)
+![image](https://github.com/VrMolodyakov/segment-api/assets/99216816/f38c666b-e79c-4950-a747-00f43cc34254)
+
 
 
 # Swagger
