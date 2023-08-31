@@ -20,7 +20,7 @@ definitions:
     type: object
   history.CreateLinkResponse:
     properties:
-      string:
+      link:
         type: string
     type: object
   membership.CreateUserRequest:
@@ -151,10 +151,6 @@ paths:
             $ref: '#/definitions/apierror.ErrorResponse'
         "404":
           description: Not Found
-          schema:
-            $ref: '#/definitions/apierror.ErrorResponse'
-        "409":
-          description: Conflict
           schema:
             $ref: '#/definitions/apierror.ErrorResponse'
         "500":

@@ -57,12 +57,6 @@
                             "$ref": "#/definitions/apierror.ErrorResponse"
                         }
                     },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/apierror.ErrorResponse"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -400,7 +394,7 @@
         "history.CreateLinkResponse": {
             "type": "object",
             "properties": {
-                "string": {
+                "link": {
                     "type": "string"
                 }
             }

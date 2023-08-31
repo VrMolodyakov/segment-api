@@ -132,7 +132,6 @@ func (h *handler) CreateLink(w http.ResponseWriter, r *http.Request) {
 // @Success 200
 // @Failure 400 {object} apierror.ErrorResponse
 // @Failure 404 {object} apierror.ErrorResponse
-// @Failure 409 {object} apierror.ErrorResponse
 // @Failure 500 {object} apierror.ErrorResponse
 // @Router /history/download/{year}/{month} [get]
 func (h *handler) DownloadCSVData(w http.ResponseWriter, r *http.Request) {
