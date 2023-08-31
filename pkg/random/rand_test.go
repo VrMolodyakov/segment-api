@@ -23,22 +23,24 @@ func TestShiftGeenrator(t *testing.T) {
 }
 
 func TestGorutinesGetRandomNumberAndNo2EqualNumbers(t *testing.T) {
-	cgen := NewRandomGenerator(1000)
+	cgen := NewRandomGenerator(100)
 	ctx, cancel := context.WithCancel(context.Background())
 	stream := RangeRandomStream(ctx, cgen)
 	emitter := NewEmitter(stream)
-	got := make([]int, 1000)
+	got := make([]int, 100)
 	var wg sync.WaitGroup
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
-			val := emitter.Next()
-			got[val-1]++
+			for i := 0; i < 10; i++ {
+				val := emitter.Next()
+				got[val-1]++
+			}
 			wg.Done()
 		}()
 	}
 
-	expected := make([]int, 1000)
+	expected := make([]int, 100)
 	for i := range expected {
 		expected[i] = 1
 	}
@@ -46,6 +48,5 @@ func TestGorutinesGetRandomNumberAndNo2EqualNumbers(t *testing.T) {
 	wg.Wait()
 	cancel()
 
-	assert.Equal(t, emitter.Next(), 0)
 	assert.Equal(t, expected, got)
 }

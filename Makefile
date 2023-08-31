@@ -1,5 +1,8 @@
-tests:
-	go test ./... -cover 
+unit-tests:
+	go test -covermode=atomic -v -race ./internal/...
+
+integration_tests:
+	go test -covermode=atomic -v -race ./integration_test/...
 
 start-with-migrations:
 	docker-compose -f ./deployments/docker-compose.migrate.yaml up --build	
