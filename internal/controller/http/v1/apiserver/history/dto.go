@@ -8,7 +8,7 @@ type CreateLinkRequest struct {
 }
 
 type CreateLinkResponse struct {
-	Link string `json:"string"`
+	Link string `json:"link"`
 }
 
 func NewCreateLinkResponse(link string) CreateLinkResponse {
