@@ -47,7 +47,7 @@ const (
 )
 
 func (s *TestSuite) SetupSuite() {
-	ctx, ctxCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer ctxCancel()
 
 	psqlContainer, err := NewPSQLContainer(ctx)
