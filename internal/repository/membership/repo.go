@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	maxFutureTime = time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC)
+	maxFutureTime = time.Date(9999, 1, 1, 1, 59, 59, 0, time.UTC)
 )
 
 type repo struct {
@@ -152,7 +152,6 @@ func (r *repo) GetUserSegments(ctx context.Context, id int64) ([]membership.Memb
 		}
 		memberships = append(memberships, m)
 	}
-
 	return memberships, nil
 }
 

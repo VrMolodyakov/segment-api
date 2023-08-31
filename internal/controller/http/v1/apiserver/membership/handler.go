@@ -210,7 +210,6 @@ func (h *handler) GetUserMembership(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteErrorMessage(w, "Invalid user id parameter")
 		return
 	}
-
 	data, err := h.membership.GetUserMembership(r.Context(), userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

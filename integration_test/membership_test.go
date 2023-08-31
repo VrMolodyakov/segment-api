@@ -2,16 +2,13 @@ package integrationtest
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
 
 	"github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/apierror"
 	membrDto "github.com/VrMolodyakov/segment-api/internal/controller/http/v1/apiserver/membership"
-	"github.com/VrMolodyakov/segment-api/internal/domain/history"
 )
 
 func (s *TestSuite) TestSuccessfulGetUserSegments() {
@@ -45,13 +42,6 @@ func (s *TestSuite) TestUserNotFound() {
 }
 
 func (s *TestSuite) TestUpdateUserSegmentsAddNew() {
-	rows, err := s.client.Query(context.Background(), "select * from segment_history")
-	s.Require().NoError(err)
-	for rows.Next() {
-		var h history.History
-		rows.Scan(&h.ID, &h.UserID, &h.Segment, &h.Operation, &h.Time)
-		fmt.Println(h)
-	}
 	requestBody := s.loader.LoadString("fixtures/api/update_user_segments_add.json")
 	resp, err := s.server.Client().Post(s.server.URL+"/api/v1/membership/update", "", bytes.NewBufferString(requestBody))
 	s.Require().NoError(err)
