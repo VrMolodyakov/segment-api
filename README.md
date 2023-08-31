@@ -36,6 +36,8 @@ make stop
 # Swagger
 [swagger файл](docs/swagger.yaml)
 
+## Вопросы которые возникли и их решение 
+[вопросы](docs/questions)
 
 ## API Reference
 
