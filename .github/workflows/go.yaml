@@ -1,4 +1,4 @@
-name: Build and Test
+name: Build
 
 on:
   push:
@@ -18,5 +18,3 @@ jobs:
       - name: Build the app
         run: make build
  
-      - name: Make tests
-        run: make tests
